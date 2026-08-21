@@ -1,0 +1,199 @@
+/* Theme tokens */
+:root {
+  --green-50: #f1f8f4;
+  --green-100: #dcefe4;
+  --green-500: #2a9d6a;
+  --green-600: #1f8054;
+  --green-700: #176643;
+  --green-ink: #123528;
+  --green-sidebar: #0f2f22;
+  --panel-border: rgba(31, 128, 84, 0.14);
+  --app-bg: #eef5f1;
+  --topbar-border: rgba(18, 53, 40, 0.08);
+}
+
+/* Global styles */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--app-bg);
+  color: var(--green-ink);
+}
+
+/* Compact form fields */
+.form-label {
+  margin-bottom: 0.2rem;
+  font-size: 0.8125rem;
+  color: var(--green-ink);
+  font-weight: 550;
+}
+
+.required-mark {
+  color: #c0392b;
+  font-weight: 700;
+  margin-left: 0.1rem;
+}
+
+.form-control,
+.form-select {
+  border-color: rgba(31, 128, 84, 0.22);
+
+  &:focus {
+    border-color: var(--green-500);
+    box-shadow: 0 0 0 0.2rem rgba(42, 157, 106, 0.18);
+  }
+}
+
+.form-control-sm {
+  min-height: calc(1.5em + 0.4rem + 2px);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.form-control-plaintext {
+  min-height: calc(1.5em + 0.4rem + 2px);
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
+  margin-bottom: 0;
+  font-size: 0.8125rem;
+}
+
+.form-row-compact {
+  margin-bottom: 0.5rem;
+}
+
+textarea.form-control-sm {
+  min-height: auto;
+}
+
+/* Shared page chrome */
+.page-eyebrow {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--green-600);
+}
+
+.page-title {
+  color: var(--green-ink);
+  font-weight: 650;
+}
+
+.form-panel,
+.list-panel,
+.summary-card,
+.chart-panel,
+.login-card {
+  background:
+    linear-gradient(180deg, rgba(241, 248, 244, 0.9) 0%, #fff 42%),
+    #fff;
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 10px 28px rgba(18, 53, 40, 0.06);
+}
+
+.form-panel {
+  border-left: 4px solid var(--green-500);
+  max-width: 920px;
+}
+
+.form-actions {
+  border-top: 1px solid rgba(31, 128, 84, 0.1);
+}
+
+/* Primary actions — green */
+.btn-primary,
+.btn-green {
+  color: #fff;
+  background-color: var(--green-600);
+  border-color: var(--green-600);
+
+  &:hover,
+  &:focus,
+  &:active,
+  &:first-child:active {
+    color: #fff;
+    background-color: var(--green-700);
+    border-color: var(--green-700);
+  }
+
+  &:disabled,
+  &.disabled {
+    color: #fff;
+    background-color: var(--green-500);
+    border-color: var(--green-500);
+    opacity: 0.7;
+  }
+}
+
+.btn-outline-primary,
+.btn-outline-green {
+  color: var(--green-700);
+  background-color: transparent;
+  border-color: rgba(31, 128, 84, 0.45);
+
+  &:hover,
+  &:focus,
+  &:active,
+  &:first-child:active {
+    color: #fff;
+    background-color: var(--green-600);
+    border-color: var(--green-600);
+  }
+}
+
+.btn-outline-secondary {
+  color: var(--green-700);
+  border-color: rgba(31, 128, 84, 0.35);
+
+  &:hover,
+  &:focus {
+    color: #fff;
+    background-color: var(--green-600);
+    border-color: var(--green-600);
+  }
+}
+
+.table thead.table-light {
+  --bs-table-bg: var(--green-50);
+  --bs-table-color: var(--green-ink);
+}
+
+.table-hover > tbody > tr:hover > * {
+  --bs-table-bg-state: rgba(42, 157, 106, 0.06);
+}
+
+/* Toastr success aligned with theme */
+.toast-success {
+  background-color: var(--green-600) !important;
+}
+
+/* ngx-bootstrap datepicker green theme */
+.theme-green .bs-datepicker-head,
+.theme-green .bs-datepicker-head button {
+  background-color: var(--green-600);
+}
+
+.theme-green .bs-datepicker-body table td span.selected,
+.theme-green .bs-datepicker-body table.days td.active:not(.select-range),
+.theme-green .bs-datepicker-body table.days span.active {
+  background-color: var(--green-600) !important;
+}
+
+.theme-green .bs-datepicker-body table td.week span {
+  color: var(--green-700);
+}
+
+/* Always highlight today's date in the calendar */
+.theme-green .bs-datepicker-body table td span.bs-datepicker-today:not(.selected) {
+  box-shadow: inset 0 0 0 2px var(--green-600);
+  color: var(--green-700);
+  font-weight: 700;
+  background-color: rgba(42, 157, 106, 0.12);
+}
+
+.theme-green .bs-datepicker-body table td span.bs-datepicker-today.selected {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
+}

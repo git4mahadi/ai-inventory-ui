@@ -1,0 +1,176 @@
+/**
+ * Sidebar navigation tree.
+ * Add / nest items here — the layout renders this structure dynamically.
+ */
+export interface SidebarMenuNode {
+  /** Unique key used for expand/collapse state */
+  id: string;
+  label: string;
+  /** Compact label shown when the sidebar rail is collapsed */
+  shortLabel: string;
+  /** Route for leaf items; omit for parent/group nodes */
+  link?: string;
+  /** Exact routerLinkActive match (default false) */
+  exact?: boolean;
+  /** Nested children — clicking the parent toggles these */
+  children?: SidebarMenuNode[];
+  /** Start expanded when children exist (default false) */
+  expandedByDefault?: boolean;
+}
+
+export const SIDEBAR_MENU: SidebarMenuNode[] = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    shortLabel: 'DB',
+    link: '/dashboard',
+    exact: true,
+  },
+  {
+    id: 'customers',
+    label: 'Customers',
+    shortLabel: 'CU',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'customers-list',
+        label: 'Customer List',
+        shortLabel: 'CL',
+        link: '/customers/list',
+        children: [],
+      },
+      {
+        id: 'customers-create',
+        label: 'Customer Create',
+        shortLabel: 'CC',
+        link: '/customers/create',
+      },
+    ],
+  },
+  {
+    id: 'stores',
+    label: 'Stores',
+    shortLabel: 'ST',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'stores-list',
+        label: 'Store List',
+        shortLabel: 'SL',
+        link: '/stores/list',
+      },
+      {
+        id: 'stores-create',
+        label: 'Store Create',
+        shortLabel: 'SC',
+        link: '/stores/create',
+      },
+    ],
+  },
+  {
+    id: 'financial-years',
+    label: 'Financial Years',
+    shortLabel: 'FY',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'financial-years-list',
+        label: 'FY List',
+        shortLabel: 'FL',
+        link: '/financial-years/list',
+      },
+      {
+        id: 'financial-years-create',
+        label: 'FY Create',
+        shortLabel: 'FC',
+        link: '/financial-years/create',
+      },
+    ],
+  },
+  {
+    id: 'suppliers',
+    label: 'Suppliers',
+    shortLabel: 'SU',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'suppliers-list',
+        label: 'Supplier List',
+        shortLabel: 'SL',
+        link: '/suppliers/list',
+      },
+      {
+        id: 'suppliers-create',
+        label: 'Supplier Create',
+        shortLabel: 'SC',
+        link: '/suppliers/create',
+      },
+    ],
+  },
+  {
+    id: 'sales',
+    label: 'Sales',
+    shortLabel: 'SL',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'sales-list',
+        label: 'Sales list',
+        shortLabel: 'LS',
+        link: '/sales/list',
+      },
+      {
+        id: 'sales-create',
+        label: 'Create sale',
+        shortLabel: 'CS',
+        link: '/sales/create',
+      },
+    ],
+  },
+];
+
+/** Collect all ancestor ids that contain a matching link. */
+export function findExpandedIdsForUrl(
+  nodes: SidebarMenuNode[],
+  url: string,
+  ancestors: string[] = [],
+): string[] {
+  for (const node of nodes) {
+    const path = ancestors.concat(node.id);
+    if (node.link && urlStartsWith(url, node.link)) {
+      return ancestors;
+    }
+    if (node.children?.length) {
+      const hit = findExpandedIdsForUrl(node.children, url, path);
+      if (hit.length) {
+        return hit;
+      }
+    }
+  }
+  return [];
+}
+
+function urlStartsWith(url: string, link: string): boolean {
+  const normalizedUrl = url.split('?')[0].replace(/\/$/, '') || '/';
+  const normalizedLink = link.replace(/\/$/, '') || '/';
+  return (
+    normalizedUrl === normalizedLink ||
+    normalizedUrl.startsWith(`${normalizedLink}/`)
+  );
+}
+
+/** Default expanded ids from `expandedByDefault` flags. */
+export function collectDefaultExpandedIds(
+  nodes: SidebarMenuNode[],
+  acc: string[] = [],
+): string[] {
+  for (const node of nodes) {
+    if (node.children?.length && node.expandedByDefault) {
+      acc.push(node.id);
+    }
+    if (node.children?.length) {
+      collectDefaultExpandedIds(node.children, acc);
+    }
+  }
+  return acc;
+}

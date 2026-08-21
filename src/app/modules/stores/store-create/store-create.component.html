@@ -1,0 +1,111 @@
+<div class="store-create">
+  <div class="form-shell">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Store Create</h1>
+        <span class="toolbar-meta">New record</span>
+      </div>
+      <a
+        routerLink="/stores/list"
+        class="icon-action icon-back"
+        title="Back to list"
+        aria-label="Back to store list"
+      >
+        <span class="icon-graphic" aria-hidden="true"></span>
+      </a>
+    </div>
+
+    <form class="create-form" [formGroup]="storeForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="storeName" class="form-label">
+            Name <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="storeName"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="storeName"
+            placeholder="Store name"
+            [class.is-invalid]="submitted && f['storeName'].invalid"
+          />
+          @if (submitted && f['storeName'].errors?.['required']) {
+            <div class="invalid-feedback">Store name is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="storeCode" class="form-label">
+            Code <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="storeCode"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="storeCode"
+            placeholder="DHK, CHD, KML, C01"
+            [class.is-invalid]="submitted && f['storeCode'].invalid"
+          />
+          @if (submitted && f['storeCode'].errors?.['required']) {
+            <div class="invalid-feedback">Store code is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="mobile" class="form-label">Mobile</label>
+          <input
+            id="mobile"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="mobile"
+            placeholder="Mobile number"
+          />
+        </div>
+
+        <div class="field">
+          <label for="address" class="form-label">Address</label>
+          <input
+            id="address"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="address"
+            placeholder="Address"
+          />
+        </div>
+
+        <div class="field field-check">
+          <div class="form-check">
+            <input
+              id="isMain"
+              type="checkbox"
+              class="form-check-input"
+              formControlName="isMain"
+            />
+            <label for="isMain" class="form-check-label">Main store</label>
+          </div>
+        </div>
+
+        <div class="field field-check">
+          <div class="form-check">
+            <input
+              id="enabled"
+              type="checkbox"
+              class="form-check-input"
+              formControlName="enabled"
+            />
+            <label for="enabled" class="form-check-label">Enabled</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline-green btn-sm" (click)="onClear()">
+          Clear
+        </button>
+        <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">
+          {{ loading ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

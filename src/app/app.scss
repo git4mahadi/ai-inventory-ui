@@ -1,0 +1,5 @@
+/* App shell styles — feature modules own their layout. */
+:host {
+  display: block;
+  min-height: 100vh;
+}

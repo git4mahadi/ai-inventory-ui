@@ -1,0 +1,22 @@
+.app-footer {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(18, 53, 40, 0.08);
+  margin-top: auto;
+}
+
+.footer-inner {
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
+.footer-brand {
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--green-ink);
+}
+
+.footer-copy {
+  font-size: 0.78rem;
+  color: #6c757d;
+}

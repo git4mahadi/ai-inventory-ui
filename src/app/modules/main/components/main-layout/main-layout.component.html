@@ -1,0 +1,157 @@
+<div
+  class="main-shell"
+  [class.sidebar-open]="sidebarOpen"
+  [class.sidebar-collapsed]="sidebarCollapsed"
+>
+  <aside class="sidebar" [attr.aria-expanded]="!sidebarCollapsed">
+    <div class="sidebar-surface" aria-hidden="true"></div>
+
+    <div class="sidebar-brand">
+      <div class="brand-mark" aria-hidden="true">
+        <span class="brand-mark-text">AI</span>
+      </div>
+      <div class="brand-copy">
+        <span class="brand-text">AI Inventory</span>
+        <span class="brand-sub">{{ currentUser?.username || currentUser?.name || 'User' }}</span>
+      </div>
+      <button
+        type="button"
+        class="btn btn-link collapse-btn d-none d-lg-inline-flex"
+        (click)="toggleCollapse()"
+        [attr.aria-label]="sidebarCollapsed ? 'Expand sidebar' : 'Minimize sidebar'"
+        [attr.title]="sidebarCollapsed ? 'Expand' : 'Minimize'"
+      >
+        <span
+          class="collapse-chevron"
+          [class.collapsed]="sidebarCollapsed"
+          aria-hidden="true"
+        ></span>
+      </button>
+    </div>
+
+    <div class="sidebar-nav-label" [class.visually-hidden]="sidebarCollapsed">Navigation</div>
+
+    <nav class="sidebar-nav">
+      <ul class="nav flex-column menu-tree">
+        <ng-container
+          *ngTemplateOutlet="menuNodes; context: { $implicit: menuTree, depth: 0 }"
+        />
+      </ul>
+    </nav>
+
+    <ng-template #menuNodes let-nodes let-depth="depth">
+      @for (node of nodes; track node.id) {
+        <li class="nav-item" [class.has-children]="hasChildren(node)">
+          @if (hasChildren(node)) {
+            <button
+              type="button"
+              class="nav-link nav-parent"
+              [class.expanded]="isExpanded(node.id)"
+              [attr.title]="node.label"
+              [attr.aria-expanded]="isExpanded(node.id)"
+              (click)="onParentClick(node, $event)"
+            >
+              <span class="nav-short" aria-hidden="true">{{ node.shortLabel }}</span>
+              <span class="nav-label">{{ node.label }}</span>
+              <span class="nav-caret" aria-hidden="true"></span>
+            </button>
+
+            @if (isExpanded(node.id) && !sidebarCollapsed) {
+              <ul class="nav flex-column menu-children" [attr.data-depth]="depth + 1">
+                <ng-container
+                  *ngTemplateOutlet="menuNodes; context: { $implicit: node.children, depth: depth + 1 }"
+                />
+              </ul>
+            }
+          } @else {
+            <a
+              class="nav-link"
+              [routerLink]="node.link"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: node.exact === true }"
+              [attr.title]="node.label"
+              (click)="closeSidebar()"
+            >
+              <span class="nav-short" aria-hidden="true">{{ node.shortLabel }}</span>
+              <span class="nav-label">{{ node.label }}</span>
+            </a>
+          }
+        </li>
+      }
+    </ng-template>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-chip" [attr.title]="currentUser?.username || currentUser?.name || 'User'">
+          <span class="user-avatar" aria-hidden="true">{{ userInitials }}</span>
+          <div class="user-meta">
+            <span class="user-name">{{ currentUser?.username || currentUser?.name || 'User' }}</span>
+            <span class="user-role">Online</span>
+          </div>
+        </div>
+        <button type="button" class="btn sidebar-logout" (click)="logout()" title="Logout">
+          <span class="logout-icon" aria-hidden="true"></span>
+          <span class="logout-label">Logout</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  @if (sidebarOpen) {
+    <div class="sidebar-backdrop" (click)="closeSidebar()" aria-hidden="true"></div>
+  }
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button
+          type="button"
+          class="btn btn-link sidebar-toggle d-lg-none"
+          (click)="toggleSidebar()"
+          aria-label="Toggle sidebar"
+        >
+          <span class="menu-icon" aria-hidden="true"></span>
+        </button>
+        <button
+          type="button"
+          class="btn btn-link sidebar-toggle d-none d-lg-inline-flex"
+          (click)="toggleCollapse()"
+          [attr.aria-label]="sidebarCollapsed ? 'Expand sidebar' : 'Minimize sidebar'"
+          [attr.title]="sidebarCollapsed ? 'Expand sidebar' : 'Minimize sidebar'"
+        >
+          <span class="menu-icon" aria-hidden="true"></span>
+        </button>
+        <div class="topbar-title-block">
+          <span class="topbar-eyebrow">Workspace</span>
+          <span class="topbar-title">Inventory console</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <span class="status-pill d-none d-md-inline-flex">
+          <span class="status-dot" aria-hidden="true"></span>
+          Live
+        </span>
+<!--        <div class="topbar-user d-none d-sm-flex">-->
+<!--          <span class="topbar-avatar" aria-hidden="true">{{ userInitials }}</span>-->
+<!--          <div class="topbar-user-meta">-->
+<!--            <span class="topbar-user-name">{{ currentUser?.name || currentUser?.username || 'User' }}</span>-->
+<!--            <span class="topbar-user-role">Signed in</span>-->
+<!--          </div>-->
+<!--        </div>-->
+        <button type="button" class="topbar-logout" (click)="logout()" title="Logout">
+          <span class="logout-icon" aria-hidden="true"></span>
+          <span>Logout</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="page-body">
+      <div class="page-canvas">
+        <router-outlet />
+      </div>
+    </main>
+
+    <app-footer />
+  </div>
+</div>
