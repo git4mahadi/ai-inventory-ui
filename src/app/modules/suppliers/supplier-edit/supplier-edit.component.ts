@@ -50,7 +50,7 @@ export class SupplierEditComponent implements OnInit {
       address: ['', [Validators.maxLength(255)]],
       contactPersonName: ['', [Validators.maxLength(120)]],
       contactPersonMobile: ['', [Validators.maxLength(20)]],
-      supplierTypeEnumKey: [''],
+      supplierTypeEnumKey: [null as string | null],
       country: ['', [Validators.maxLength(120)]],
       enabled: [true],
     });
@@ -92,7 +92,7 @@ export class SupplierEditComponent implements OnInit {
       address: '',
       contactPersonName: '',
       contactPersonMobile: '',
-      supplierTypeEnumKey: '',
+      supplierTypeEnumKey: null,
       country: '',
       enabled: true,
     });
@@ -170,7 +170,7 @@ export class SupplierEditComponent implements OnInit {
       address: normalized.address ?? '',
       contactPersonName: normalized.contactPersonName ?? '',
       contactPersonMobile: normalized.contactPersonMobile ?? '',
-      supplierTypeEnumKey: normalized.supplierTypeEnumKey ?? '',
+      supplierTypeEnumKey: normalized.supplierTypeEnumKey ?? null,
       country: normalized.country ?? '',
       enabled: normalized.enabled ?? true,
     });

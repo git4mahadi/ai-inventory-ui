@@ -36,7 +36,7 @@ export class SupplierListComponent implements OnInit {
       searchTerm: [''],
       supplierName: [''],
       mobile: [''],
-      supplierTypeEnumKey: [''],
+      supplierTypeEnumKey: [null as string | null],
     });
   }
 
@@ -98,7 +98,7 @@ export class SupplierListComponent implements OnInit {
       searchTerm: '',
       supplierName: '',
       mobile: '',
-      supplierTypeEnumKey: '',
+      supplierTypeEnumKey: null,
     });
     this.page = 0;
     this.loadSuppliers();

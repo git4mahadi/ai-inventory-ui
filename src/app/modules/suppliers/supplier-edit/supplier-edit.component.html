@@ -42,16 +42,18 @@
 
           <div class="field">
             <label for="supplierTypeEnumKey" class="form-label">Type</label>
-            <select
+            <ng-select
               id="supplierTypeEnumKey"
-              class="form-select form-select-sm"
+              class="form-ng-select"
               formControlName="supplierTypeEnumKey"
+              placeholder="Select..."
+              [clearable]="false"
+              [searchable]="false"
             >
-              <option value="">Select type</option>
               @for (type of supplierTypes; track type.key) {
-                <option [value]="type.key">{{ type.value }}</option>
+                <ng-option [value]="type.key">{{ type.value }}</ng-option>
               }
-            </select>
+            </ng-select>
           </div>
 
           <div class="field">

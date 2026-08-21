@@ -45,7 +45,7 @@ export class SupplierCreateComponent {
       address: ['', [Validators.maxLength(255)]],
       contactPersonName: ['', [Validators.maxLength(120)]],
       contactPersonMobile: ['', [Validators.maxLength(20)]],
-      supplierTypeEnumKey: [''],
+      supplierTypeEnumKey: [null as string | null],
       country: ['', [Validators.maxLength(120)]],
       enabled: [true],
     });
@@ -102,7 +102,7 @@ export class SupplierCreateComponent {
       address: '',
       contactPersonName: '',
       contactPersonMobile: '',
-      supplierTypeEnumKey: '',
+      supplierTypeEnumKey: null,
       country: '',
       enabled: true,
     });

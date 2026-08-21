@@ -165,6 +165,45 @@ textarea.form-control-sm {
   --bs-table-bg-state: rgba(42, 157, 106, 0.06);
 }
 
+/* List enabled / disabled status icon */
+.col-enabled {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.enabled-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+
+  .enabled-status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    img {
+      width: 0.78rem;
+      height: 0.78rem;
+      display: block;
+    }
+  }
+
+  &.is-enabled .enabled-status-icon {
+    background: linear-gradient(145deg, #2a9d6a 0%, #176643 100%);
+    box-shadow: 0 2px 8px rgba(31, 128, 84, 0.28);
+  }
+
+  &.is-disabled .enabled-status-icon {
+    background: linear-gradient(145deg, #d16558 0%, #a03a30 100%);
+    box-shadow: 0 2px 8px rgba(146, 43, 33, 0.22);
+  }
+}
+
 /* Toastr success aligned with theme */
 .toast-success {
   background-color: var(--green-600) !important;
