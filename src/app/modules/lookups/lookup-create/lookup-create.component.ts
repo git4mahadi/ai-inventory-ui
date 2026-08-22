@@ -1,11 +1,22 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Subject, finalize, takeUntil } from 'rxjs';
+import {
+  Subject,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  of,
+  switchMap,
+  takeUntil,
+} from 'rxjs';
+import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { LookupDto } from '../../../models/dto/LookupDto';
 import { LookupEnum } from '../../../models/enums/LookupEnum';
 import { LookupResponse } from '../../../models/response/LookupResponse';
+import { LookupSearchDto } from '../../../models/search/LookupSearchDto';
 import { LookupApiService } from '../../../services/LookupApiService';
 
 @Component({
@@ -17,6 +28,7 @@ import { LookupApiService } from '../../../services/LookupApiService';
 export class LookupCreateComponent implements OnInit, OnDestroy {
   readonly lookupForm: FormGroup;
   readonly lookupTypes = LookupEnum.enums;
+  readonly parentTypeahead$ = new Subject<string>();
   parentOptions: LookupResponse[] = [];
   loadingParents = false;
   submitted = false;
@@ -44,12 +56,14 @@ export class LookupCreateComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.setupParentTypeahead();
+
     this.lookupForm
       .get('lookupEnumKey')
       ?.valueChanges.pipe(takeUntil(this.destroy$))
-      .subscribe((lookupEnumKey) => {
+      .subscribe(() => {
         this.lookupForm.patchValue({ parentId: null }, { emitEvent: false });
-        this.loadParentOptions(lookupEnumKey);
+        this.parentOptions = [];
       });
   }
 
@@ -62,24 +76,11 @@ export class LookupCreateComponent implements OnInit, OnDestroy {
     return lookup.parentFullName || lookup.lookupName || lookup.id || '';
   }
 
-  loadParentOptions(lookupEnumKey: string | null): void {
-    if (!lookupEnumKey) {
-      this.parentOptions = [];
+  onParentOpen(): void {
+    if (!this.lookupForm.get('lookupEnumKey')?.value) {
       return;
     }
-
-    this.loadingParents = true;
-    this.lookupApi
-      .getLookupListByEnumKey(lookupEnumKey)
-      .pipe(finalize(() => (this.loadingParents = false)))
-      .subscribe({
-        next: (lookups) => {
-          this.parentOptions = lookups ?? [];
-        },
-        error: () => {
-          this.parentOptions = [];
-        },
-      });
+    this.parentTypeahead$.next('');
   }
 
   onSubmit(): void {
@@ -119,5 +120,40 @@ export class LookupCreateComponent implements OnInit, OnDestroy {
     });
     this.parentOptions = [];
     this.submitted = false;
+  }
+
+  private setupParentTypeahead(): void {
+    this.parentTypeahead$
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((term) => this.searchParents(term)),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((lookups) => {
+        this.parentOptions = lookups;
+      });
+  }
+
+  private searchParents(term: string) {
+    const lookupEnumKey = this.lookupForm.get('lookupEnumKey')?.value;
+    if (!lookupEnumKey) {
+      return of([]);
+    }
+
+    this.loadingParents = true;
+    return this.lookupApi
+      .searchTerm(
+        new LookupSearchDto({
+          searchTerm: term?.trim() || undefined,
+          lookupEnumKey,
+          enabled: true,
+        }),
+      )
+      .pipe(
+        map((lookups) => lookups ?? []),
+        catchError(() => of([])),
+        finalize(() => (this.loadingParents = false)),
+      );
   }
 }

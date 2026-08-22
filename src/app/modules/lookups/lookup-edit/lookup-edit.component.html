@@ -79,11 +79,14 @@
               id="parentId"
               class="form-ng-select"
               formControlName="parentId"
-              placeholder="None (root lookup)"
+              placeholder="Search parent lookup..."
               [clearable]="true"
               [searchable]="true"
+              [typeahead]="parentTypeahead$"
+              [minTermLength]="0"
               [loading]="loadingParents"
               [disabled]="!lookupForm.get('lookupEnumKey')?.value"
+              (open)="onParentOpen()"
             >
               @for (parent of parentOptions; track parent.id) {
                 <ng-option [value]="parent.id">{{ parentLabel(parent) }}</ng-option>

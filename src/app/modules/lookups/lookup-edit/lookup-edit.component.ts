@@ -1,12 +1,23 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject, finalize, takeUntil } from 'rxjs';
+import {
+  Subject,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  of,
+  switchMap,
+  takeUntil,
+} from 'rxjs';
+import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { normalizeLookup } from '../../../core/utils/api-response.util';
 import { LookupDto } from '../../../models/dto/LookupDto';
 import { LookupEnum } from '../../../models/enums/LookupEnum';
 import { LookupResponse } from '../../../models/response/LookupResponse';
+import { LookupSearchDto } from '../../../models/search/LookupSearchDto';
 import { LookupApiService } from '../../../services/LookupApiService';
 
 @Component({
@@ -18,6 +29,7 @@ import { LookupApiService } from '../../../services/LookupApiService';
 export class LookupEditComponent implements OnInit, OnDestroy {
   readonly lookupForm: FormGroup;
   readonly lookupTypes = LookupEnum.enums;
+  readonly parentTypeahead$ = new Subject<string>();
   parentOptions: LookupResponse[] = [];
   loadingParents = false;
   submitted = false;
@@ -55,11 +67,14 @@ export class LookupEditComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.setupParentTypeahead();
+
     this.lookupForm
       .get('lookupEnumKey')
       ?.valueChanges.pipe(takeUntil(this.destroy$))
-      .subscribe((lookupEnumKey) => {
-        this.loadParentOptions(lookupEnumKey);
+      .subscribe(() => {
+        this.lookupForm.patchValue({ parentId: null }, { emitEvent: false });
+        this.parentOptions = [];
       });
 
     const stateLookup = normalizeLookup(
@@ -83,26 +98,11 @@ export class LookupEditComponent implements OnInit, OnDestroy {
     return lookup.parentFullName || lookup.lookupName || lookup.id || '';
   }
 
-  loadParentOptions(lookupEnumKey: string | null): void {
-    if (!lookupEnumKey) {
-      this.parentOptions = [];
+  onParentOpen(): void {
+    if (!this.lookupForm.get('lookupEnumKey')?.value) {
       return;
     }
-
-    this.loadingParents = true;
-    this.lookupApi
-      .getLookupListByEnumKey(lookupEnumKey)
-      .pipe(finalize(() => (this.loadingParents = false)))
-      .subscribe({
-        next: (lookups) => {
-          this.parentOptions = (lookups ?? []).filter(
-            (lookup) => lookup.id !== this.lookupId,
-          );
-        },
-        error: () => {
-          this.parentOptions = [];
-        },
-      });
+    this.parentTypeahead$.next('');
   }
 
   onClear(): void {
@@ -163,6 +163,43 @@ export class LookupEditComponent implements OnInit, OnDestroy {
       });
   }
 
+  private setupParentTypeahead(): void {
+    this.parentTypeahead$
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((term) => this.searchParents(term)),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((lookups) => {
+        this.parentOptions = lookups;
+      });
+  }
+
+  private searchParents(term: string) {
+    const lookupEnumKey = this.lookupForm.get('lookupEnumKey')?.value;
+    if (!lookupEnumKey) {
+      return of([]);
+    }
+
+    this.loadingParents = true;
+    return this.lookupApi
+      .searchTerm(
+        new LookupSearchDto({
+          searchTerm: term?.trim() || undefined,
+          lookupEnumKey,
+          enabled: true,
+        }),
+      )
+      .pipe(
+        map((lookups) =>
+          (lookups ?? []).filter((lookup) => lookup.id !== this.lookupId),
+        ),
+        catchError(() => of([])),
+        finalize(() => (this.loadingParents = false)),
+      );
+  }
+
   private patchForm(lookup: LookupResponse): void {
     const normalized = normalizeLookup(lookup);
     if (!normalized) {
@@ -180,6 +217,20 @@ export class LookupEditComponent implements OnInit, OnDestroy {
       { emitEvent: false },
     );
 
-    this.loadParentOptions(normalized.lookupEnumKey ?? null);
+    this.ensureSelectedParentOption(normalized.parentId ?? null);
+  }
+
+  private ensureSelectedParentOption(parentId: string | null): void {
+    if (!parentId || this.parentOptions.some((lookup) => lookup.id === parentId)) {
+      return;
+    }
+
+    this.lookupApi.getLookupById(parentId).subscribe({
+      next: (parent) => {
+        if (parent?.id && parent.id !== this.lookupId) {
+          this.parentOptions = [parent, ...this.parentOptions];
+        }
+      },
+    });
   }
 }
