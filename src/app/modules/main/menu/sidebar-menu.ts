@@ -108,6 +108,26 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     ],
   },
   {
+    id: 'lookups',
+    label: 'Lookups',
+    shortLabel: 'LK',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'lookups-list',
+        label: 'Lookup List',
+        shortLabel: 'LL',
+        link: '/lookups/list',
+      },
+      {
+        id: 'lookups-create',
+        label: 'Lookup Create',
+        shortLabel: 'LC',
+        link: '/lookups/create',
+      },
+    ],
+  },
+  {
     id: 'sales',
     label: 'Sales',
     shortLabel: 'SL',

@@ -4,6 +4,7 @@ import { Page } from '../models/Page';
 import { CustomerResponse } from '../../models/response/CustomerResponse';
 import { FinancialYearResponse } from '../../models/response/FinancialYearResponse';
 import { StoreResponse } from '../../models/response/StoreResponse';
+import { LookupResponse } from '../../models/response/LookupResponse';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
 
 /** Unwraps `{ data: T }` API envelopes; passes through if already unwrapped. */
@@ -162,6 +163,33 @@ export function normalizeSupplier(payload: unknown): SupplierResponse | null {
 
   if ('data' in value && value['data'] != null) {
     return normalizeSupplier(value['data']);
+  }
+
+  return null;
+}
+
+/** Resolves a lookup entity from a raw or `{ data: lookup }` payload. */
+export function normalizeLookup(payload: unknown): LookupResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'lookupName' in value ||
+    'lookupShortName' in value ||
+    'lookupEnumKey' in value ||
+    'lookupEnumValue' in value ||
+    'parentId' in value ||
+    'parentFullName' in value ||
+    'id' in value
+  ) {
+    return value as LookupResponse;
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeLookup(value['data']);
   }
 
   return null;

@@ -44,6 +44,11 @@ const routes: Routes = [
         loadChildren: () =>
           import('../suppliers/suppliers.module').then((m) => m.SuppliersModule),
       },
+      {
+        path: 'lookups',
+        loadChildren: () =>
+          import('../lookups/lookups.module').then((m) => m.LookupsModule),
+      },
     ],
   },
 ];

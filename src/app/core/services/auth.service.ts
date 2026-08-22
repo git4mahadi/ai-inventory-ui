@@ -35,7 +35,16 @@ export class AuthService {
   ) {}
 
   isAuthenticated(): boolean {
-    return !!this.token;
+    if (!this.token) {
+      return false;
+    }
+
+    if (this.isTokenExpired(this.token)) {
+      this.clearSession();
+      return false;
+    }
+
+    return true;
   }
 
   getToken(): string | null {
@@ -53,10 +62,32 @@ export class AuthService {
   }
 
   logout(): void {
+    this.clearSession();
+    void this.router.navigate(['/auth/login']);
+  }
+
+  private clearSession(): void {
     localStorage.removeItem(this.storageKey);
     this.token = null;
     this.currentUserSubject.next(null);
-    void this.router.navigate(['/auth/login']);
+  }
+
+  private isTokenExpired(token: string): boolean {
+    try {
+      const payloadPart = token.split('.')[1];
+      if (!payloadPart) {
+        return false;
+      }
+
+      const payload = JSON.parse(atob(payloadPart)) as { exp?: number };
+      if (typeof payload.exp !== 'number') {
+        return false;
+      }
+
+      return Date.now() >= payload.exp * 1000;
+    } catch {
+      return false;
+    }
   }
 
   private setSession(response: AuthResponse, request: AuthRequest): void {
