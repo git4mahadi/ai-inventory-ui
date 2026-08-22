@@ -128,6 +128,26 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     ],
   },
   {
+    id: 'items',
+    label: 'Items',
+    shortLabel: 'IT',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'items-list',
+        label: 'Item List',
+        shortLabel: 'IL',
+        link: '/items/list',
+      },
+      {
+        id: 'items-create',
+        label: 'Item Create',
+        shortLabel: 'IC',
+        link: '/items/create',
+      },
+    ],
+  },
+  {
     id: 'sales',
     label: 'Sales',
     shortLabel: 'SL',

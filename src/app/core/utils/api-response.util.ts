@@ -4,6 +4,7 @@ import { Page } from '../models/Page';
 import { CustomerResponse } from '../../models/response/CustomerResponse';
 import { FinancialYearResponse } from '../../models/response/FinancialYearResponse';
 import { StoreResponse } from '../../models/response/StoreResponse';
+import { ItemResponse } from '../../models/response/ItemResponse';
 import { LookupResponse } from '../../models/response/LookupResponse';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
 
@@ -163,6 +164,34 @@ export function normalizeSupplier(payload: unknown): SupplierResponse | null {
 
   if ('data' in value && value['data'] != null) {
     return normalizeSupplier(value['data']);
+  }
+
+  return null;
+}
+
+/** Resolves an item entity from a raw or `{ data: item }` payload. */
+export function normalizeItem(payload: unknown): ItemResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'itemName' in value ||
+    'itemCode' in value ||
+    'itemBarcode' in value ||
+    'strength' in value ||
+    'storeId' in value ||
+    'purchaseRate' in value ||
+    'salesRate' in value ||
+    'id' in value
+  ) {
+    return value as ItemResponse;
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeItem(value['data']);
   }
 
   return null;
