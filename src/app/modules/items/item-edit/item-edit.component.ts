@@ -15,11 +15,11 @@ import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { normalizeItem } from '../../../core/utils/api-response.util';
 import { ItemDto } from '../../../models/dto/ItemDto';
+import { LookupEnum } from '../../../models/enums/LookupEnum';
 import { ItemResponse } from '../../../models/response/ItemResponse';
 import { LookupResponse } from '../../../models/response/LookupResponse';
 import { StoreResponse } from '../../../models/response/StoreResponse';
 import { SupplierResponse } from '../../../models/response/SupplierResponse';
-import { LookupSearchDto } from '../../../models/search/LookupSearchDto';
 import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
 import { SupplierSearchDto } from '../../../models/search/SupplierSearchDto';
 import { ItemApiService } from '../../../services/ItemApiService';
@@ -37,8 +37,6 @@ export class ItemEditComponent implements OnInit, OnDestroy {
   readonly itemForm: FormGroup;
   readonly storeTypeahead$ = new Subject<string>();
   readonly supplierTypeahead$ = new Subject<string>();
-  readonly packSizeTypeahead$ = new Subject<string>();
-  readonly locationTypeahead$ = new Subject<string>();
 
   storeOptions: StoreResponse[] = [];
   supplierOptions: SupplierResponse[] = [];
@@ -47,8 +45,7 @@ export class ItemEditComponent implements OnInit, OnDestroy {
 
   loadingStores = false;
   loadingSuppliers = false;
-  loadingPackSizes = false;
-  loadingLocations = false;
+  loadingLookups = false;
 
   submitted = false;
   loading = false;
@@ -99,8 +96,7 @@ export class ItemEditComponent implements OnInit, OnDestroy {
 
     this.setupStoreTypeahead();
     this.setupSupplierTypeahead();
-    this.setupPackSizeTypeahead();
-    this.setupLocationTypeahead();
+    this.loadPackSizeAndLocationOptions();
 
     const stateItem = normalizeItem(
       (history.state?.['item'] as ItemResponse | undefined) ??
@@ -136,18 +132,6 @@ export class ItemEditComponent implements OnInit, OnDestroy {
     this.storeTypeahead$.next('');
   }
 
-  onSupplierOpen(): void {
-    this.supplierTypeahead$.next('');
-  }
-
-  onPackSizeOpen(): void {
-    this.packSizeTypeahead$.next('');
-  }
-
-  onLocationOpen(): void {
-    this.locationTypeahead$.next('');
-  }
-
   onClear(): void {
     this.itemForm.reset({
       itemName: '',
@@ -167,8 +151,6 @@ export class ItemEditComponent implements OnInit, OnDestroy {
     });
     this.storeOptions = [];
     this.supplierOptions = [];
-    this.packSizeOptions = [];
-    this.locationOptions = [];
   }
 
   loadItem(): void {
@@ -253,29 +235,17 @@ export class ItemEditComponent implements OnInit, OnDestroy {
       });
   }
 
-  private setupPackSizeTypeahead(): void {
-    this.packSizeTypeahead$
+  private loadPackSizeAndLocationOptions(): void {
+    this.loadingLookups = true;
+    this.lookupApi
+      .getLookupListByKeys([LookupEnum.PACK_SIZE.key, LookupEnum.LOCATION.key])
       .pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
-        switchMap((term) => this.searchLookups(term, 'packSize')),
         takeUntil(this.destroy$),
+        finalize(() => (this.loadingLookups = false)),
       )
-      .subscribe((lookups) => {
-        this.packSizeOptions = lookups;
-      });
-  }
-
-  private setupLocationTypeahead(): void {
-    this.locationTypeahead$
-      .pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
-        switchMap((term) => this.searchLookups(term, 'location')),
-        takeUntil(this.destroy$),
-      )
-      .subscribe((lookups) => {
-        this.locationOptions = lookups;
+      .subscribe((lookupsByKey) => {
+        this.packSizeOptions = lookupsByKey[LookupEnum.PACK_SIZE.key] ?? [];
+        this.locationOptions = lookupsByKey[LookupEnum.LOCATION.key] ?? [];
       });
   }
 
@@ -296,11 +266,16 @@ export class ItemEditComponent implements OnInit, OnDestroy {
   }
 
   private searchSuppliers(term: string) {
+    const searchTerm = term?.trim();
+    if (!searchTerm || searchTerm.length < 3) {
+      return of(this.supplierOptions);
+    }
+
     this.loadingSuppliers = true;
     return this.supplierApi
       .searchTerm(
         new SupplierSearchDto({
-          searchTerm: term?.trim() || undefined,
+          searchTerm,
           enabled: true,
         }),
       )
@@ -308,33 +283,6 @@ export class ItemEditComponent implements OnInit, OnDestroy {
         map((suppliers) => suppliers ?? []),
         catchError(() => of([])),
         finalize(() => (this.loadingSuppliers = false)),
-      );
-  }
-
-  private searchLookups(term: string, kind: 'packSize' | 'location') {
-    if (kind === 'packSize') {
-      this.loadingPackSizes = true;
-    } else {
-      this.loadingLocations = true;
-    }
-
-    return this.lookupApi
-      .searchTerm(
-        new LookupSearchDto({
-          searchTerm: term?.trim() || undefined,
-          enabled: true,
-        }),
-      )
-      .pipe(
-        map((lookups) => lookups ?? []),
-        catchError(() => of([])),
-        finalize(() => {
-          if (kind === 'packSize') {
-            this.loadingPackSizes = false;
-          } else {
-            this.loadingLocations = false;
-          }
-        }),
       );
   }
 
@@ -390,42 +338,41 @@ export class ItemEditComponent implements OnInit, OnDestroy {
           },
           ...this.supplierOptions,
         ];
-        return;
+      } else {
+        this.supplierApi.getSupplierById(item.supplierId).subscribe({
+          next: (supplier) => {
+            if (supplier?.id) {
+              this.supplierOptions = [supplier, ...this.supplierOptions];
+            }
+          },
+        });
       }
-
-      this.supplierApi.getSupplierById(item.supplierId).subscribe({
-        next: (supplier) => {
-          if (supplier?.id) {
-            this.supplierOptions = [supplier, ...this.supplierOptions];
-          }
-        },
-      });
     }
 
     if (
       item.packSizeId &&
       !this.packSizeOptions.some((lookup) => lookup.id === item.packSizeId)
     ) {
-      this.lookupApi.getLookupById(item.packSizeId).subscribe({
-        next: (lookup) => {
-          if (lookup?.id) {
-            this.packSizeOptions = [lookup, ...this.packSizeOptions];
-          }
+      this.packSizeOptions = [
+        {
+          id: item.packSizeId,
+          lookupName: item.packSizeName,
         },
-      });
+        ...this.packSizeOptions,
+      ];
     }
 
     if (
       item.locationId &&
       !this.locationOptions.some((lookup) => lookup.id === item.locationId)
     ) {
-      this.lookupApi.getLookupById(item.locationId).subscribe({
-        next: (lookup) => {
-          if (lookup?.id) {
-            this.locationOptions = [lookup, ...this.locationOptions];
-          }
+      this.locationOptions = [
+        {
+          id: item.locationId,
+          lookupName: item.locationName,
         },
-      });
+        ...this.locationOptions,
+      ];
     }
   }
 }

@@ -1,8 +1,15 @@
 export class LookupEnum {
+  public static PACK_SIZE = new LookupEnum('PACK_SIZE', 'Pack Size');
+  public static LOCATION = new LookupEnum('LOCATION', 'Location');
   public static EXPENSE_HEAD = new LookupEnum('EXPENSE_HEAD', 'Expense Head');
-  public static BANK = new LookupEnum('BANK', 'Category');
+  public static BANK = new LookupEnum('BANK', 'Bank');
 
-  static enums = [LookupEnum.EXPENSE_HEAD, LookupEnum.BANK];
+  static enums = [
+    LookupEnum.PACK_SIZE,
+    LookupEnum.LOCATION,
+    LookupEnum.EXPENSE_HEAD,
+    LookupEnum.BANK,
+  ];
 
   constructor(key: string, value: string) {
     this.key = key;

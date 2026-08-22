@@ -14,10 +14,10 @@ import {
 import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { ItemDto } from '../../../models/dto/ItemDto';
+import { LookupEnum } from '../../../models/enums/LookupEnum';
 import { LookupResponse } from '../../../models/response/LookupResponse';
 import { StoreResponse } from '../../../models/response/StoreResponse';
 import { SupplierResponse } from '../../../models/response/SupplierResponse';
-import { LookupSearchDto } from '../../../models/search/LookupSearchDto';
 import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
 import { SupplierSearchDto } from '../../../models/search/SupplierSearchDto';
 import { ItemApiService } from '../../../services/ItemApiService';
@@ -35,8 +35,6 @@ export class ItemCreateComponent implements OnInit, OnDestroy {
   readonly itemForm: FormGroup;
   readonly storeTypeahead$ = new Subject<string>();
   readonly supplierTypeahead$ = new Subject<string>();
-  readonly packSizeTypeahead$ = new Subject<string>();
-  readonly locationTypeahead$ = new Subject<string>();
 
   storeOptions: StoreResponse[] = [];
   supplierOptions: SupplierResponse[] = [];
@@ -45,8 +43,7 @@ export class ItemCreateComponent implements OnInit, OnDestroy {
 
   loadingStores = false;
   loadingSuppliers = false;
-  loadingPackSizes = false;
-  loadingLocations = false;
+  loadingLookups = false;
 
   submitted = false;
   loading = false;
@@ -71,10 +68,10 @@ export class ItemCreateComponent implements OnInit, OnDestroy {
       supplierId: [null as string | null],
       packSizeId: [null as string | null],
       locationId: [null as string | null],
-      purchaseRate: [0, [Validators.required, Validators.min(0)]],
-      salesRate: [0, [Validators.required, Validators.min(0)]],
-      reOrderLevel: [0, [Validators.min(0)]],
-      expireNotifyDays: [0, [Validators.min(0)]],
+      purchaseRate: [null, [Validators.required, Validators.min(0)]],
+      salesRate: [null, [Validators.required, Validators.min(0)]],
+      reOrderLevel: [null, [Validators.min(0)]],
+      expireNotifyDays: [null, [Validators.min(0)]],
       isForeignItem: [false],
       enabled: [true],
     });
@@ -85,10 +82,9 @@ export class ItemCreateComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.setupStoreTypeahead();
+    this.loadStores();
+    this.loadLookups();
     this.setupSupplierTypeahead();
-    this.setupPackSizeTypeahead();
-    this.setupLocationTypeahead();
   }
 
   ngOnDestroy(): void {
@@ -111,18 +107,6 @@ export class ItemCreateComponent implements OnInit, OnDestroy {
 
   onStoreOpen(): void {
     this.storeTypeahead$.next('');
-  }
-
-  onSupplierOpen(): void {
-    this.supplierTypeahead$.next('');
-  }
-
-  onPackSizeOpen(): void {
-    this.packSizeTypeahead$.next('');
-  }
-
-  onLocationOpen(): void {
-    this.locationTypeahead$.next('');
   }
 
   onSubmit(): void {
@@ -171,17 +155,15 @@ export class ItemCreateComponent implements OnInit, OnDestroy {
       supplierId: null,
       packSizeId: null,
       locationId: null,
-      purchaseRate: 0,
-      salesRate: 0,
-      reOrderLevel: 0,
-      expireNotifyDays: 0,
+      purchaseRate: null,
+      salesRate: null,
+      reOrderLevel: null,
+      expireNotifyDays: null,
       isForeignItem: false,
       enabled: true,
     });
     this.storeOptions = [];
     this.supplierOptions = [];
-    this.packSizeOptions = [];
-    this.locationOptions = [];
     this.submitted = false;
   }
 
@@ -211,31 +193,36 @@ export class ItemCreateComponent implements OnInit, OnDestroy {
       });
   }
 
-  private setupPackSizeTypeahead(): void {
-    this.packSizeTypeahead$
+  private loadStores(): void {
+    this.loadingStores = true;
+    this.storeApi
+      .searchList(new StoreSearchDto({ enabled: true }))
       .pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
-        switchMap((term) => this.searchLookups(term, 'packSize')),
         takeUntil(this.destroy$),
+        finalize(() => (this.loadingStores = false)),
       )
-      .subscribe((lookups) => {
-        this.packSizeOptions = lookups;
+      .subscribe((stores) => {
+        this.storeOptions = stores;
       });
   }
 
-  private setupLocationTypeahead(): void {
-    this.locationTypeahead$
+  private loadLookups(): void {
+    this.loadingLookups = true;
+    this.lookupApi
+      .getLookupListByKeys([LookupEnum.PACK_SIZE.key, LookupEnum.LOCATION.key])
       .pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
-        switchMap((term) => this.searchLookups(term, 'location')),
         takeUntil(this.destroy$),
+        finalize(() => (this.loadingLookups = false)),
       )
-      .subscribe((lookups) => {
-        this.locationOptions = lookups;
+      .subscribe((lookupsByKey) => {
+        this.packSizeOptions = lookupsByKey[LookupEnum.PACK_SIZE.key] ?? [];
+        this.locationOptions = lookupsByKey[LookupEnum.LOCATION.key] ?? [];
       });
   }
+
+
+
+
 
   private searchStores(term: string) {
     this.loadingStores = true;
@@ -254,11 +241,16 @@ export class ItemCreateComponent implements OnInit, OnDestroy {
   }
 
   private searchSuppliers(term: string) {
+    const searchTerm = term?.trim();
+    if (!searchTerm || searchTerm.length < 3) {
+      return of(this.supplierOptions);
+    }
+
     this.loadingSuppliers = true;
     return this.supplierApi
       .searchTerm(
         new SupplierSearchDto({
-          searchTerm: term?.trim() || undefined,
+          searchTerm,
           enabled: true,
         }),
       )
@@ -266,33 +258,6 @@ export class ItemCreateComponent implements OnInit, OnDestroy {
         map((suppliers) => suppliers ?? []),
         catchError(() => of([])),
         finalize(() => (this.loadingSuppliers = false)),
-      );
-  }
-
-  private searchLookups(term: string, kind: 'packSize' | 'location') {
-    if (kind === 'packSize') {
-      this.loadingPackSizes = true;
-    } else {
-      this.loadingLocations = true;
-    }
-
-    return this.lookupApi
-      .searchTerm(
-        new LookupSearchDto({
-          searchTerm: term?.trim() || undefined,
-          enabled: true,
-        }),
-      )
-      .pipe(
-        map((lookups) => lookups ?? []),
-        catchError(() => of([])),
-        finalize(() => {
-          if (kind === 'packSize') {
-            this.loadingPackSizes = false;
-          } else {
-            this.loadingLocations = false;
-          }
-        }),
       );
   }
 }

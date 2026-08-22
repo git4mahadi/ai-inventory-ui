@@ -111,13 +111,13 @@
               id="supplierId"
               class="form-ng-select"
               formControlName="supplierId"
-              placeholder="Search supplier..."
+              placeholder="Type to search supplier..."
               [clearable]="true"
               [searchable]="true"
               [typeahead]="supplierTypeahead$"
-              [minTermLength]="0"
+              [minTermLength]="3"
               [loading]="loadingSuppliers"
-              (open)="onSupplierOpen()"
+              notFoundText="Type at least 3 characters"
             >
               @for (supplier of supplierOptions; track supplier.id) {
                 <ng-option [value]="supplier.id">{{ supplierLabel(supplier) }}</ng-option>
@@ -131,13 +131,10 @@
               id="packSizeId"
               class="form-ng-select"
               formControlName="packSizeId"
-              placeholder="Search pack size..."
+              placeholder="Select pack size..."
               [clearable]="true"
               [searchable]="true"
-              [typeahead]="packSizeTypeahead$"
-              [minTermLength]="0"
-              [loading]="loadingPackSizes"
-              (open)="onPackSizeOpen()"
+              [loading]="loadingLookups"
             >
               @for (lookup of packSizeOptions; track lookup.id) {
                 <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
@@ -151,13 +148,10 @@
               id="locationId"
               class="form-ng-select"
               formControlName="locationId"
-              placeholder="Search location..."
+              placeholder="Select location..."
               [clearable]="true"
               [searchable]="true"
-              [typeahead]="locationTypeahead$"
-              [minTermLength]="0"
-              [loading]="loadingLocations"
-              (open)="onLocationOpen()"
+              [loading]="loadingLookups"
             >
               @for (lookup of locationOptions; track lookup.id) {
                 <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
