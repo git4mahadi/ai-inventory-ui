@@ -236,3 +236,10 @@ textarea.form-control-sm {
 .theme-green .bs-datepicker-body table td span.bs-datepicker-today.selected {
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
 }
+
+/* ng-select dropdowns appended to body (e.g. inside overflow containers) */
+.ng-dropdown-panel {
+  z-index: 1060;
+  border-color: rgba(31, 128, 84, 0.22);
+  font-size: 0.8125rem;
+}

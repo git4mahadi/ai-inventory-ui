@@ -148,6 +148,26 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     ],
   },
   {
+    id: 'opening-stocks',
+    label: 'Opening Stock',
+    shortLabel: 'OS',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'opening-stocks-list',
+        label: 'Opening Stock List',
+        shortLabel: 'OL',
+        link: '/opening-stocks/list',
+      },
+      {
+        id: 'opening-stocks-create',
+        label: 'Opening Stock Create',
+        shortLabel: 'OC',
+        link: '/opening-stocks/create',
+      },
+    ],
+  },
+  {
     id: 'sales',
     label: 'Sales',
     shortLabel: 'SL',

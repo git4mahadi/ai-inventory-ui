@@ -1,0 +1,279 @@
+<div class="opening-stock-edit">
+  <div class="form-shell">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Opening Stock Edit</h1>
+        <span class="toolbar-meta">{{ openingStockNcId || 'Update record' }}</span>
+      </div>
+      <a
+        routerLink="/opening-stocks/list"
+        class="icon-action icon-back"
+        title="Back to list"
+        aria-label="Back to opening stock list"
+      >
+        <span class="icon-graphic" aria-hidden="true"></span>
+      </a>
+    </div>
+
+    @if (loadingRecord) {
+      <div class="state-block">
+        <div class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></div>
+        <span>Loading opening stock...</span>
+      </div>
+    } @else {
+      <form class="edit-form" [formGroup]="openingStockForm" (ngSubmit)="onSubmit()" novalidate>
+        <div class="form-grid">
+          <div class="field">
+            <label for="storeId" class="form-label">
+              Store <span class="required-mark" aria-hidden="true">*</span>
+            </label>
+            <ng-select
+              id="storeId"
+              class="form-ng-select"
+              formControlName="storeId"
+              placeholder="Select store..."
+              [clearable]="false"
+              [searchable]="true"
+              [loading]="loadingStores"
+              [class.is-invalid]="submitted && f['storeId'].invalid"
+            >
+              @for (store of storeOptions; track store.id) {
+                <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+              }
+            </ng-select>
+            @if (submitted && f['storeId'].errors?.['required']) {
+              <div class="invalid-feedback d-block">Store is required.</div>
+            }
+          </div>
+
+          <div class="field">
+            <label for="financialYearId" class="form-label">
+              Financial year <span class="required-mark" aria-hidden="true">*</span>
+            </label>
+            <ng-select
+              id="financialYearId"
+              class="form-ng-select"
+              formControlName="financialYearId"
+              placeholder="Select financial year..."
+              [clearable]="false"
+              [searchable]="true"
+              [loading]="loadingFinancialYears"
+              [class.is-invalid]="submitted && f['financialYearId'].invalid"
+            >
+              @for (fy of financialYearOptions; track fy.id) {
+                <ng-option [value]="fy.id">{{ fyLabel(fy) }}</ng-option>
+              }
+            </ng-select>
+            @if (submitted && f['financialYearId'].errors?.['required']) {
+              <div class="invalid-feedback d-block">Financial year is required.</div>
+            }
+          </div>
+
+          <div class="field">
+            <label for="challanDate" class="form-label">
+              Challan date <span class="required-mark" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="challanDate"
+              type="text"
+              class="form-control form-control-sm"
+              formControlName="challanDate"
+              bsDatepicker
+              [bsConfig]="datePickerConfig"
+              placeholder="Select date"
+              autocomplete="off"
+              [class.is-invalid]="submitted && f['challanDate'].invalid"
+            />
+            @if (submitted && f['challanDate'].errors?.['required']) {
+              <div class="invalid-feedback">Challan date is required.</div>
+            }
+          </div>
+
+          <div class="field">
+            <label for="challanNo" class="form-label">Challan no</label>
+            <input
+              id="challanNo"
+              type="text"
+              class="form-control form-control-sm"
+              formControlName="challanNo"
+              placeholder="Optional challan number"
+            />
+          </div>
+        </div>
+
+        <div class="items-section">
+          <div class="items-header">
+            <h2 class="items-title">Line items</h2>
+            <button
+              type="button"
+              class="icon-action icon-add-line"
+              title="Add line"
+              aria-label="Add line"
+              (click)="addItemRow()"
+            >
+              <span class="icon-graphic" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <div class="items-table-wrap">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Item <span class="required-mark" aria-hidden="true">*</span></th>
+                  <th>Qty <span class="required-mark" aria-hidden="true">*</span></th>
+                  <th>UOM</th>
+                  <th>Batch <span class="required-mark" aria-hidden="true">*</span></th>
+                  <th>Expire</th>
+                  <th>Purchase <span class="required-mark" aria-hidden="true">*</span></th>
+                  <th>Sales <span class="required-mark" aria-hidden="true">*</span></th>
+                  <th>Supplier</th>
+                  <th class="col-remove"></th>
+                </tr>
+              </thead>
+              <tbody formArrayName="items">
+                @for (row of itemRows.controls; track $index) {
+                  <tr [formGroupName]="$index">
+                    <td class="col-item">
+                      <ng-select
+                        class="form-ng-select"
+                        formControlName="itemId"
+                        placeholder="Type to search..."
+                        appendTo="body"
+                        [clearable]="true"
+                        [searchable]="true"
+                        [typeahead]="itemTypeahead$"
+                        [minTermLength]="2"
+                        [loading]="loadingItems"
+                        notFoundText="Type at least 2 characters"
+                        (change)="onItemChange($index, $event)"
+                        [class.is-invalid]="submitted && itemRow($index).controls['itemId'].invalid"
+                      >
+                        @for (item of itemOptions; track item.id) {
+                          <ng-option [value]="item.id">{{ itemLabel(item) }}</ng-option>
+                        }
+                      </ng-select>
+                    </td>
+                    <td class="col-qty">
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        class="form-control form-control-sm"
+                        formControlName="stockQty"
+                        [class.is-invalid]="submitted && itemRow($index).controls['stockQty'].invalid"
+                      />
+                    </td>
+                    <td class="col-uom">
+                      <ng-select
+                        class="form-ng-select"
+                        formControlName="uom"
+                        placeholder="Select UOM..."
+                        appendTo="body"
+                        [clearable]="true"
+                        [searchable]="true"
+                        [loading]="loadingLookups"
+                      >
+                        @for (lookup of packSizeOptions; track lookup.id) {
+                          <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
+                        }
+                      </ng-select>
+                    </td>
+                    <td class="col-batch">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        formControlName="batchNo"
+                        readonly
+                        title="Auto-generated batch number"
+                        [class.is-invalid]="submitted && itemRow($index).controls['batchNo'].invalid"
+                      />
+                    </td>
+                    <td class="col-expire">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        formControlName="expireDate"
+                        bsDatepicker
+                        [bsConfig]="datePickerConfig"
+                        placeholder="Date"
+                        autocomplete="off"
+                      />
+                    </td>
+                    <td class="col-rate">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        class="form-control form-control-sm"
+                        formControlName="purchaseRate"
+                        [class.is-invalid]="submitted && itemRow($index).controls['purchaseRate'].invalid"
+                      />
+                    </td>
+                    <td class="col-rate">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        class="form-control form-control-sm"
+                        formControlName="salesRate"
+                        [class.is-invalid]="submitted && itemRow($index).controls['salesRate'].invalid"
+                      />
+                    </td>
+                    <td class="col-supplier">
+                      <ng-select
+                        class="form-ng-select"
+                        formControlName="supplierId"
+                        placeholder="Type to search..."
+                        appendTo="body"
+                        [clearable]="true"
+                        [searchable]="true"
+                        [typeahead]="supplierTypeahead$"
+                        [minTermLength]="3"
+                        [loading]="loadingSuppliers"
+                        notFoundText="Type at least 3 characters"
+                      >
+                        @for (supplier of supplierOptions; track supplier.id) {
+                          <ng-option [value]="supplier.id">{{ supplierLabel(supplier) }}</ng-option>
+                        }
+                      </ng-select>
+                    </td>
+                    <td class="col-remove">
+                      <button
+                        type="button"
+                        class="icon-action icon-delete"
+                        title="Remove line"
+                        aria-label="Remove line"
+                        [disabled]="itemRows.length <= 1"
+                        (click)="removeItemRow($index)"
+                      >
+                        <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (submitted && itemRows.invalid) {
+            <div class="items-error">Each line needs item, quantity, batch, purchase rate, and sales rate.</div>
+          }
+
+          <div class="items-total">
+            <span class="items-total-label">Purchase total</span>
+            <span class="items-total-value">{{ itemsTotal | number: '1.2-2' }}</span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-green btn-sm" (click)="onClear()">
+            Reset
+          </button>
+          <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">
+            {{ loading ? 'Saving...' : 'Update' }}
+          </button>
+        </div>
+      </form>
+    }
+  </div>
+</div>

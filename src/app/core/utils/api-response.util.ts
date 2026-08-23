@@ -6,6 +6,7 @@ import { FinancialYearResponse } from '../../models/response/FinancialYearRespon
 import { StoreResponse } from '../../models/response/StoreResponse';
 import { ItemResponse } from '../../models/response/ItemResponse';
 import { LookupResponse } from '../../models/response/LookupResponse';
+import { OpeningStockResponse } from '../../models/response/OpeningStockResponse';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
 
 /** Unwraps `{ data: T }` API envelopes; passes through if already unwrapped. */
@@ -192,6 +193,34 @@ export function normalizeItem(payload: unknown): ItemResponse | null {
 
   if ('data' in value && value['data'] != null) {
     return normalizeItem(value['data']);
+  }
+
+  return null;
+}
+
+/** Resolves an opening stock entity from a raw or `{ data: openingStock }` payload. */
+export function normalizeOpeningStock(
+  payload: unknown,
+): OpeningStockResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'openingStockNcId' in value ||
+    'challanNo' in value ||
+    'challanDate' in value ||
+    'financialYearId' in value ||
+    'fyCode' in value ||
+    ('storeId' in value && 'items' in value)
+  ) {
+    return value as OpeningStockResponse;
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeOpeningStock(value['data']);
   }
 
   return null;
