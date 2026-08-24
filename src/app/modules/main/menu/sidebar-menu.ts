@@ -65,6 +65,12 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         shortLabel: 'SC',
         link: '/stores/create',
       },
+      {
+        id: 'stores-stock',
+        label: 'Stock',
+        shortLabel: 'SK',
+        link: '/stores/stock',
+      },
     ],
   },
   {

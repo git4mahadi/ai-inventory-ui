@@ -34,9 +34,9 @@
                 <td>{{ sale.soldAt | date: 'mediumDate' }}</td>
                 <td class="fw-semibold">{{ sale.itemName }}</td>
                 <td>{{ sale.customerName }}</td>
-                <td class="text-end">{{ sale.quantity }}</td>
-                <td class="text-end">{{ sale.unitPrice | currency: 'USD' }}</td>
-                <td class="text-end">{{ getTotal(sale) | currency: 'USD' }}</td>
+                <td class="text-end">{{ sale.quantity | bdNumber }}</td>
+                <td class="text-end">{{ sale.unitPrice | bdNumber }}</td>
+                <td class="text-end">{{ getTotal(sale) | bdNumber }}</td>
                 <td class="text-muted small">{{ sale.notes || '—' }}</td>
               </tr>
             }
@@ -45,7 +45,7 @@
             <tr>
               <td colspan="5" class="text-end fw-semibold">Grand total</td>
               <td class="text-end fw-semibold">
-                {{ getGrandTotal() | currency: 'USD' }}
+                {{ getGrandTotal() | bdNumber }}
               </td>
               <td></td>
             </tr>

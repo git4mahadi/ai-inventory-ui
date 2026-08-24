@@ -4,7 +4,7 @@
       <div class="toolbar-title">
         <h1 class="page-title">Lookups</h1>
         @if (!loading) {
-          <span class="toolbar-meta">{{ totalElements }} total</span>
+          <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
         }
       </div>
       <a routerLink="/lookups/create" class="btn-create" title="Create lookup">
@@ -142,7 +142,7 @@
           <div class="footer-meta">
             <span class="footer-label">Showing</span>
             <span class="footer-count">
-              <strong>{{ lookups.length }}</strong> of {{ totalElements }}
+              <strong>{{ lookups.length | bdNumber }}</strong> of {{ totalElements | bdNumber }}
             </span>
           </div>
           <div class="pager" role="navigation" aria-label="Pagination">

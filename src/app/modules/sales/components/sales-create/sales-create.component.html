@@ -83,7 +83,7 @@
           <div class="form-control-plaintext fw-semibold">
             {{
               (saleForm.value.quantity || 0) * (saleForm.value.unitPrice || 0)
-                | currency: 'USD'
+                | bdNumber
             }}
           </div>
         </div>

@@ -4,7 +4,7 @@
       <div class="toolbar-title">
         <h1 class="page-title">Items</h1>
         @if (!loading) {
-          <span class="toolbar-meta">{{ totalElements }} total</span>
+          <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
         }
       </div>
       <a routerLink="/items/create" class="btn-create" title="Create item">
@@ -84,8 +84,8 @@
                   <td class="cell-muted" [attr.title]="item.supplierName || null">
                     {{ item.supplierName || '—' }}
                   </td>
-                  <td class="cell-mono">{{ item.purchaseRate ?? '—' }}</td>
-                  <td class="cell-mono">{{ item.salesRate ?? '—' }}</td>
+                  <td class="cell-mono">{{ item.purchaseRate != null ? (item.purchaseRate | bdNumber) : '—' }}</td>
+                  <td class="cell-mono">{{ item.salesRate != null ? (item.salesRate | bdNumber) : '—' }}</td>
                   <td>{{ item.isForeignItem ? 'Yes' : 'No' }}</td>
                   <td class="col-enabled">
                     <span
@@ -153,7 +153,7 @@
           <div class="footer-meta">
             <span class="footer-label">Showing</span>
             <span class="footer-count">
-              <strong>{{ items.length }}</strong> of {{ totalElements }}
+              <strong>{{ items.length | bdNumber }}</strong> of {{ totalElements | bdNumber }}
             </span>
           </div>
           <div class="pager" role="navigation" aria-label="Pagination">

@@ -7,9 +7,10 @@ import { BsDatepickerModule } from 'ngx-bootstrap/datepicker';
 import { TimepickerModule } from 'ngx-bootstrap/timepicker';
 import { ConfirmDialogComponent } from './components/confirm-dialog/confirm-dialog.component';
 import { FooterComponent } from './components/footer/footer.component';
+import { BdNumberPipe } from './pipes/bd-number.pipe';
 
 @NgModule({
-  declarations: [FooterComponent, ConfirmDialogComponent],
+  declarations: [FooterComponent, ConfirmDialogComponent, BdNumberPipe],
   imports: [
     CommonModule,
     FormsModule,
@@ -27,6 +28,7 @@ import { FooterComponent } from './components/footer/footer.component';
     NgSelectModule,
     FooterComponent,
     ConfirmDialogComponent,
+    BdNumberPipe,
     BsDatepickerModule,
     TimepickerModule,
   ],

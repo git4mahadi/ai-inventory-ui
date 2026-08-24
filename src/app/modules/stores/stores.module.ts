@@ -3,6 +3,7 @@ import { SharedModule } from '../../shared/shared.module';
 import { StoreCreateComponent } from './store-create/store-create.component';
 import { StoreEditComponent } from './store-edit/store-edit.component';
 import { StoreListComponent } from './store-list/store-list.component';
+import { StockListComponent } from './stock-list/stock-list.component';
 import { StoresRoutingModule } from './stores-routing.module';
 
 @NgModule({
@@ -10,6 +11,7 @@ import { StoresRoutingModule } from './stores-routing.module';
     StoreListComponent,
     StoreCreateComponent,
     StoreEditComponent,
+    StockListComponent,
   ],
   imports: [SharedModule, StoresRoutingModule],
 })

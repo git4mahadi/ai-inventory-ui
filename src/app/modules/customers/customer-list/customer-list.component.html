@@ -4,7 +4,7 @@
       <div class="toolbar-title">
         <h1 class="page-title">Customers</h1>
         @if (!loading) {
-          <span class="toolbar-meta">{{ totalElements }} total</span>
+          <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
         }
       </div>
       <a routerLink="/customers/create" class="btn-create" title="Create customer">
@@ -144,7 +144,7 @@
           <div class="footer-meta">
             <span class="footer-label">Showing</span>
             <span class="footer-count">
-              <strong>{{ customers.length }}</strong> of {{ totalElements }}
+              <strong>{{ customers.length | bdNumber }}</strong> of {{ totalElements | bdNumber }}
             </span>
           </div>
           <div class="pager" role="navigation" aria-label="Pagination">
