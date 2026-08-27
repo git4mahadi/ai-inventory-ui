@@ -1,0 +1,124 @@
+<div class="purchase-order-list">
+  <div class="list-shell">
+    <div class="list-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Purchase Orders</h1>
+        @if (hasLoaded) {
+          <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
+        }
+      </div>
+      <a routerLink="/purchase-orders/create" class="btn-create" title="Create purchase order">
+        <span class="icon-plus" aria-hidden="true"></span>
+        <span class="btn-create-label">Create</span>
+      </a>
+    </div>
+
+    <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="searchTerm"
+        placeholder="Search"
+        aria-label="Search term"
+      />
+      <ng-select
+        class="filter-ng-select"
+        formControlName="storeId"
+        placeholder="All stores"
+        [clearable]="true"
+        [searchable]="true"
+        aria-label="Store"
+      >
+        @for (store of storeOptions; track store.id) {
+          <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+        }
+      </ng-select>
+      <ng-select
+        class="filter-ng-select"
+        formControlName="supplierId"
+        placeholder="All suppliers"
+        [clearable]="true"
+        [searchable]="true"
+        [typeahead]="supplierTypeahead$"
+        [minTermLength]="3"
+        [loading]="loadingSuppliers"
+        notFoundText="Type at least 3 characters"
+        aria-label="Supplier"
+      >
+        @for (supplier of supplierOptions; track supplier.id) {
+          <ng-option [value]="supplier.id">{{ supplierLabel(supplier) }}</ng-option>
+        }
+      </ng-select>
+      <ng-select
+        class="filter-ng-select"
+        formControlName="orderStatus"
+        placeholder="All statuses"
+        [clearable]="true"
+        [searchable]="true"
+        aria-label="Status"
+      >
+        @for (status of statusOptions; track status) {
+          <ng-option [value]="status">{{ statusLabel(status) }}</ng-option>
+        }
+      </ng-select>
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="orderDate"
+        bsDatepicker
+        [bsConfig]="datePickerConfig"
+        placeholder="Order date"
+        autocomplete="off"
+        aria-label="Order date"
+      />
+      <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">Search</button>
+      <button type="button" class="btn btn-outline-green btn-sm" (click)="onReset()" [disabled]="loading">
+        Reset
+      </button>
+    </form>
+
+    <div class="table-wrap">
+      @if (hasLoaded && totalElements === 0) {
+        <div class="state-block">
+          <span class="text-muted">No purchase orders found.</span>
+          <a routerLink="/purchase-orders/create" class="btn btn-green btn-sm">Create first</a>
+        </div>
+      } @else {
+        <div class="app-data-grid" aria-label="Purchase order list">
+          <ag-grid-angular
+            [theme]="gridTheme"
+            [columnDefs]="columnDefs"
+            [defaultColDef]="defaultColDef"
+            [rowModelType]="'infinite'"
+            [datasource]="dataSource"
+            [pagination]="true"
+            [paginationPageSize]="size"
+            [paginationPageSizeSelector]="false"
+            [paginationNumberFormatter]="paginationNumberFormatter"
+            [cacheBlockSize]="size"
+            [headerHeight]="41"
+            [rowHeight]="41"
+            [animateRows]="false"
+            [suppressCellFocus]="true"
+            [suppressRowHoverHighlight]="false"
+            (gridReady)="onGridReady($event)"
+            (cellClicked)="onCellClicked($event)"
+          />
+        </div>
+      }
+    </div>
+  </div>
+
+  <app-confirm-dialog
+    [open]="!!pendingDelete"
+    [danger]="true"
+    title="Delete purchase order"
+    [message]="deleteDialogMessage"
+    [detail]="deleteDialogDetail"
+    confirmLabel="Delete"
+    cancelLabel="Cancel"
+    [busy]="!!deletingId"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+</div>

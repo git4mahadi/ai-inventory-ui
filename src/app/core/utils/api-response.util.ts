@@ -7,6 +7,7 @@ import { StoreResponse } from '../../models/response/StoreResponse';
 import { ItemResponse } from '../../models/response/ItemResponse';
 import { LookupResponse } from '../../models/response/LookupResponse';
 import { OpeningStockResponse } from '../../models/response/OpeningStockResponse';
+import { PurchaseOrderResponse } from '../../models/response/PurchaseOrderResponse';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
 
 /** Unwraps `{ data: T }` API envelopes; passes through if already unwrapped. */
@@ -243,6 +244,33 @@ export function normalizeOpeningStock(
 
   if ('data' in value && value['data'] != null) {
     return normalizeOpeningStock(value['data']);
+  }
+
+  return null;
+}
+
+/** Resolves a purchase order entity from a raw or `{ data: purchaseOrder }` payload. */
+export function normalizePurchaseOrder(
+  payload: unknown,
+): PurchaseOrderResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'orderNcId' in value ||
+    'orderDate' in value ||
+    'orderStatus' in value ||
+    'grandTotal' in value ||
+    ('storeId' in value && 'supplierId' in value)
+  ) {
+    return value as PurchaseOrderResponse;
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizePurchaseOrder(value['data']);
   }
 
   return null;

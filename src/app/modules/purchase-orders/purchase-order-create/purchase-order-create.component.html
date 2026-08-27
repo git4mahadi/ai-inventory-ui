@@ -1,0 +1,306 @@
+<div class="purchase-order-create">
+  <div class="form-shell">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Purchase Order Create</h1>
+        <span class="toolbar-meta">New record</span>
+      </div>
+      <a routerLink="/purchase-orders/list" class="icon-action icon-back" title="Back to list" aria-label="Back to purchase order list">
+        <span class="icon-graphic" aria-hidden="true"></span>
+      </a>
+    </div>
+
+    <form class="create-form" [formGroup]="purchaseOrderForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="storeId" class="form-label">
+            Store <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="storeId"
+            class="form-ng-select"
+            formControlName="storeId"
+            placeholder="Select store..."
+            [clearable]="false"
+            [searchable]="true"
+            [loading]="loadingStores"
+            [class.is-invalid]="submitted && f['storeId'].invalid"
+          >
+            @for (store of storeOptions; track store.id) {
+              <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+            }
+          </ng-select>
+          @if (submitted && f['storeId'].errors?.['required']) {
+            <div class="invalid-feedback d-block">Store is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="supplierId" class="form-label">
+            Supplier <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="supplierId"
+            class="form-ng-select"
+            formControlName="supplierId"
+            placeholder="Type to search..."
+            [clearable]="true"
+            [searchable]="true"
+            [typeahead]="supplierTypeahead$"
+            [minTermLength]="3"
+            [loading]="loadingSuppliers"
+            notFoundText="Type at least 3 characters"
+            [class.is-invalid]="submitted && f['supplierId'].invalid"
+          >
+            @for (supplier of supplierOptions; track supplier.id) {
+              <ng-option [value]="supplier.id">{{ supplierLabel(supplier) }}</ng-option>
+            }
+          </ng-select>
+          @if (submitted && f['supplierId'].errors?.['required']) {
+            <div class="invalid-feedback d-block">Supplier is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="orderDate" class="form-label">
+            Order date <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="orderDate"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="orderDate"
+            bsDatepicker
+            [bsConfig]="datePickerConfig"
+            placeholder="Select date"
+            autocomplete="off"
+            [class.is-invalid]="submitted && f['orderDate'].invalid"
+          />
+          @if (submitted && f['orderDate'].errors?.['required']) {
+            <div class="invalid-feedback">Order date is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="expectedDate" class="form-label">Expected date</label>
+          <input
+            id="expectedDate"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="expectedDate"
+            bsDatepicker
+            [bsConfig]="datePickerConfig"
+            placeholder="Select date"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="field">
+          <label for="discountAmount" class="form-label">Discount</label>
+          <input
+            id="discountAmount"
+            type="text"
+            min="0"
+            step="0.01"
+            class="form-control form-control-sm"
+            formControlName="discountAmount"
+            placeholder="0"
+          />
+        </div>
+
+        <div class="field">
+          <label for="taxAmount" class="form-label">Tax</label>
+          <input
+            id="taxAmount"
+            type="text"
+            min="0"
+            step="0.01"
+            class="form-control form-control-sm"
+            formControlName="taxAmount"
+            placeholder="0"
+          />
+        </div>
+
+        <div class="field">
+          <label for="shippingCharge" class="form-label">Shipping</label>
+          <input
+            id="shippingCharge"
+            type="text"
+            min="0"
+            step="0.01"
+            class="form-control form-control-sm"
+            formControlName="shippingCharge"
+            placeholder="0"
+          />
+        </div>
+
+        <div class="field">
+          <label for="otherCharge" class="form-label">Other charge</label>
+          <input
+            id="otherCharge"
+            type="text"
+            min="0"
+            step="0.01"
+            class="form-control form-control-sm"
+            formControlName="otherCharge"
+            placeholder="0"
+          />
+        </div>
+      </div>
+
+      <div class="field field-full">
+        <label for="remarks" class="form-label">Remarks</label>
+        <input
+          id="remarks"
+          type="text"
+          class="form-control form-control-sm"
+          formControlName="remarks"
+          placeholder="Optional remarks"
+        />
+      </div>
+
+      <div class="items-section">
+        <div class="items-header">
+          <h2 class="items-title">Items</h2>
+          <button
+            type="button"
+            class="icon-action icon-add-line"
+            title="Add line"
+            aria-label="Add line"
+            (click)="addItemRow()"
+          >
+            <span class="icon-graphic" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item <span class="required-mark" aria-hidden="true">*</span></th>
+                <th>Qty <span class="required-mark" aria-hidden="true">*</span></th>
+                <th>Unit price <span class="required-mark" aria-hidden="true">*</span></th>
+                <th>Disc %</th>
+                <th>Tax %</th>
+                <th>Line total</th>
+                <th>Remarks</th>
+                <th class="col-remove"></th>
+              </tr>
+            </thead>
+            <tbody formArrayName="items">
+              @for (row of itemRows.controls; track $index) {
+                <tr [formGroupName]="$index">
+                  <td class="col-item">
+                    <ng-select
+                      class="form-ng-select"
+                      formControlName="itemId"
+                      placeholder="Type to search..."
+                      appendTo="body"
+                      [clearable]="true"
+                      [searchable]="true"
+                      [typeahead]="itemTypeahead$"
+                      [minTermLength]="2"
+                      [loading]="loadingItems"
+                      notFoundText="Type at least 2 characters"
+                      (change)="onItemChange($index, $event)"
+                      [class.is-invalid]="submitted && itemRow($index).controls['itemId'].invalid"
+                    >
+                      @for (item of itemOptions; track item.id) {
+                        <ng-option [value]="item.id">{{ itemLabel(item) }}</ng-option>
+                      }
+                    </ng-select>
+                  </td>
+                  <td class="col-qty">
+                    <input
+                      type="text"
+                      min="0.01"
+                      step="0.01"
+                      class="form-control form-control-sm"
+                      formControlName="orderedQty"
+                      [class.is-invalid]="submitted && itemRow($index).controls['orderedQty'].invalid"
+                    />
+                  </td>
+                  <td class="col-rate">
+                    <input
+                      type="text"
+                      min="0"
+                      step="0.01"
+                      class="form-control form-control-sm"
+                      formControlName="unitPrice"
+                      [class.is-invalid]="submitted && itemRow($index).controls['unitPrice'].invalid"
+                    />
+                  </td>
+                  <td class="col-pct">
+                    <input
+                      type="text"
+                      min="0"
+                      step="0.01"
+                      class="form-control form-control-sm"
+                      formControlName="discountPercent"
+                    />
+                  </td>
+                  <td class="col-pct">
+                    <input
+                      type="text"
+                      min="0"
+                      step="0.01"
+                      class="form-control form-control-sm"
+                      formControlName="taxPercent"
+                    />
+                  </td>
+                  <td class="col-line">
+                    <span class="line-total">{{ lineTotalAt($index) | bdNumber }}</span>
+                  </td>
+                  <td class="col-remarks">
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      formControlName="remarks"
+                      placeholder="Optional"
+                    />
+                  </td>
+                  <td class="col-remove">
+                    <button
+                      type="button"
+                      class="icon-action icon-delete"
+                      title="Remove line"
+                      aria-label="Remove line"
+                      [disabled]="itemRows.length <= 1"
+                      (click)="removeItemRow($index)"
+                    >
+                      <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (submitted && itemRows.invalid) {
+          <div class="items-error">Each line needs item, quantity, and unit price.</div>
+        }
+
+        <div class="totals-panel">
+          <div class="totals-row">
+            <span>Subtotal</span>
+            <strong>{{ subTotal | bdNumber }}</strong>
+          </div>
+          <div class="totals-row totals-grand">
+            <span>Grand total</span>
+            <strong>{{ grandTotal | bdNumber }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline-green btn-sm" (click)="onClear()">
+          Clear
+        </button>
+        <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">
+          {{ loading ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -174,6 +174,26 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     ],
   },
   {
+    id: 'purchase-orders',
+    label: 'Purchase Orders',
+    shortLabel: 'PO',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'purchase-orders-list',
+        label: 'Purchase Order List',
+        shortLabel: 'PL',
+        link: '/purchase-orders/list',
+      },
+      {
+        id: 'purchase-orders-create',
+        label: 'Purchase Order Create',
+        shortLabel: 'PC',
+        link: '/purchase-orders/create',
+      },
+    ],
+  },
+  {
     id: 'sales',
     label: 'Sales',
     shortLabel: 'SL',
