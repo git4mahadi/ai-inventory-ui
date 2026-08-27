@@ -68,6 +68,11 @@ const routes: Routes = [
             (m) => m.PurchaseOrdersModule,
           ),
       },
+      {
+        path: 'receives',
+        loadChildren: () =>
+          import('../receives/receives.module').then((m) => m.ReceivesModule),
+      },
     ],
   },
 ];

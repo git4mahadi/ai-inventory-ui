@@ -194,6 +194,26 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     ],
   },
   {
+    id: 'receives',
+    label: 'Item Receive',
+    shortLabel: 'IR',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'receives-list',
+        label: 'Receive List',
+        shortLabel: 'RL',
+        link: '/receives/list',
+      },
+      {
+        id: 'receives-create',
+        label: 'Receive Create',
+        shortLabel: 'RC',
+        link: '/receives/create',
+      },
+    ],
+  },
+  {
     id: 'sales',
     label: 'Sales',
     shortLabel: 'SL',

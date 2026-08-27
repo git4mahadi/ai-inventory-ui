@@ -8,6 +8,7 @@ import { ItemResponse } from '../../models/response/ItemResponse';
 import { LookupResponse } from '../../models/response/LookupResponse';
 import { OpeningStockResponse } from '../../models/response/OpeningStockResponse';
 import { PurchaseOrderResponse } from '../../models/response/PurchaseOrderResponse';
+import { ReceiveResponse } from '../../models/response/ReceiveResponse';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
 
 /** Unwraps `{ data: T }` API envelopes; passes through if already unwrapped. */
@@ -271,6 +272,30 @@ export function normalizePurchaseOrder(
 
   if ('data' in value && value['data'] != null) {
     return normalizePurchaseOrder(value['data']);
+  }
+
+  return null;
+}
+
+/** Resolves a receive entity from a raw or `{ data: receive }` payload. */
+export function normalizeReceive(payload: unknown): ReceiveResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'receiveNcId' in value ||
+    'receiveDate' in value ||
+    'receiveStatus' in value ||
+    'purchaseOrderId' in value
+  ) {
+    return value as ReceiveResponse;
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeReceive(value['data']);
   }
 
   return null;

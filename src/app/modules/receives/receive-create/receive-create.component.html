@@ -1,0 +1,277 @@
+<div class="receive-create">
+  <div class="form-shell">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Item Receive Create</h1>
+        <span class="toolbar-meta">New record</span>
+      </div>
+      <a routerLink="/receives/list" class="icon-action icon-back" title="Back to list" aria-label="Back to receive list">
+        <span class="icon-graphic" aria-hidden="true"></span>
+      </a>
+    </div>
+
+    <form class="create-form" [formGroup]="receiveForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="purchaseOrderId" class="form-label">
+            Purchase order <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="purchaseOrderId"
+            class="form-ng-select"
+            formControlName="purchaseOrderId"
+            placeholder="Type to search..."
+            [clearable]="true"
+            [searchable]="true"
+            [typeahead]="purchaseOrderTypeahead$"
+            [minTermLength]="2"
+            [loading]="loadingPurchaseOrders"
+            notFoundText="Type at least 2 characters"
+            (change)="onPurchaseOrderChange($event)"
+            [class.is-invalid]="submitted && f['purchaseOrderId'].invalid"
+          >
+            @for (order of purchaseOrderOptions; track order.id) {
+              <ng-option [value]="order.id">{{ purchaseOrderLabel(order) }}</ng-option>
+            }
+          </ng-select>
+          @if (submitted && f['purchaseOrderId'].errors?.['required']) {
+            <div class="invalid-feedback d-block">Purchase order is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="storeId" class="form-label">
+            Store <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="storeId"
+            class="form-ng-select"
+            formControlName="storeId"
+            placeholder="From purchase order"
+            [clearable]="false"
+            [searchable]="false"
+            [loading]="loadingStores"
+            [class.is-invalid]="submitted && f['storeId'].invalid"
+          >
+            @for (store of storeOptions; track store.id) {
+              <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+            }
+          </ng-select>
+          @if (submitted && f['storeId'].errors?.['required']) {
+            <div class="invalid-feedback d-block">Store is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="supplierId" class="form-label">
+            Supplier <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="supplierId"
+            class="form-ng-select"
+            formControlName="supplierId"
+            placeholder="From purchase order"
+            [clearable]="false"
+            [searchable]="false"
+            [class.is-invalid]="submitted && f['supplierId'].invalid"
+          >
+            @for (supplier of supplierOptions; track supplier.id) {
+              <ng-option [value]="supplier.id">{{ supplierLabel(supplier) }}</ng-option>
+            }
+          </ng-select>
+          @if (submitted && f['supplierId'].errors?.['required']) {
+            <div class="invalid-feedback d-block">Supplier is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="receiveDate" class="form-label">
+            Receive date <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="receiveDate"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="receiveDate"
+            bsDatepicker
+            [bsConfig]="datePickerConfig"
+            placeholder="Select date"
+            autocomplete="off"
+            [class.is-invalid]="submitted && f['receiveDate'].invalid"
+          />
+          @if (submitted && f['receiveDate'].errors?.['required']) {
+            <div class="invalid-feedback">Receive date is required.</div>
+          }
+        </div>
+      </div>
+
+      <div class="items-section">
+        <div class="items-header">
+          <h2 class="items-title">Items</h2>
+          <button
+            type="button"
+            class="icon-action icon-add-line"
+            title="Add line"
+            aria-label="Add line"
+            (click)="addItemRow()"
+          >
+            <span class="icon-graphic" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item <span class="required-mark" aria-hidden="true">*</span></th>
+                <th>Received <span class="required-mark" aria-hidden="true">*</span></th>
+                <th>Rejected</th>
+                <th>Unit price <span class="required-mark" aria-hidden="true">*</span></th>
+                <th>UOM</th>
+                <th>Batch <span class="required-mark" aria-hidden="true">*</span></th>
+                <th>Expire</th>
+                <th>Line total</th>
+                <th>Remarks</th>
+                <th class="col-remove"></th>
+              </tr>
+            </thead>
+            <tbody formArrayName="items">
+              @for (row of itemRows.controls; track row) {
+                <tr [formGroupName]="$index">
+                  <td class="col-item">
+                    <ng-select
+                      class="form-ng-select"
+                      formControlName="itemId"
+                      placeholder="Type to search..."
+                      appendTo="body"
+                      [clearable]="true"
+                      [searchable]="true"
+                      [typeahead]="itemTypeahead$"
+                      [minTermLength]="2"
+                      [loading]="loadingItems"
+                      notFoundText="Type at least 2 characters"
+                      (change)="onItemChange($index, $event)"
+                      [class.is-invalid]="submitted && itemRow($index).controls['itemId'].invalid"
+                    >
+                      @for (item of itemOptions; track item.id) {
+                        <ng-option [value]="item.id">{{ itemLabel(item) }}</ng-option>
+                      }
+                    </ng-select>
+                  </td>
+                  <td class="col-qty">
+                    <input
+                      type="text"
+                      min="0.01"
+                      step="0.01"
+                      class="form-control form-control-sm"
+                      formControlName="receivedQty"
+                      [class.is-invalid]="submitted && itemRow($index).controls['receivedQty'].invalid"
+                    />
+                  </td>
+                  <td class="col-qty">
+                    <input
+                      type="text"
+                      min="0"
+                      step="0.01"
+                      class="form-control form-control-sm"
+                      formControlName="rejectedQty"
+                    />
+                  </td>
+                  <td class="col-rate">
+                    <input
+                      type="text"
+                      min="0"
+                      step="0.01"
+                      class="form-control form-control-sm"
+                      formControlName="unitPrice"
+                      [class.is-invalid]="submitted && itemRow($index).controls['unitPrice'].invalid"
+                    />
+                  </td>
+                  <td class="col-uom">
+                    <ng-select
+                      class="form-ng-select"
+                      formControlName="uom"
+                      placeholder="Select UOM..."
+                      appendTo="body"
+                      [clearable]="true"
+                      [searchable]="true"
+                      [loading]="loadingLookups"
+                    >
+                      @for (lookup of packSizeOptions; track lookup.id) {
+                        <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
+                      }
+                    </ng-select>
+                  </td>
+                  <td class="col-batch">
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      formControlName="batchNo"
+                      readonly
+                      title="Auto-generated batch number"
+                      [class.is-invalid]="submitted && itemRow($index).controls['batchNo'].invalid"
+                    />
+                  </td>
+                  <td class="col-expire">
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      formControlName="expireDate"
+                      bsDatepicker
+                      [bsConfig]="datePickerConfig"
+                      placeholder="Date"
+                      autocomplete="off"
+                    />
+                  </td>
+                  <td class="col-line">
+                    <span class="line-total">{{ lineTotalAt($index) | bdNumber }}</span>
+                  </td>
+                  <td class="col-remarks">
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      formControlName="remarks"
+                      placeholder="Optional"
+                    />
+                  </td>
+                  <td class="col-remove">
+                    <button
+                      type="button"
+                      class="icon-action icon-delete"
+                      title="Remove line"
+                      aria-label="Remove line"
+                      [disabled]="itemRows.length <= 1"
+                      (click)="removeItemRow($index)"
+                    >
+                      <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (submitted && itemRows.invalid) {
+          <div class="items-error">Each line needs item, received quantity, unit price, and batch.</div>
+        }
+
+        <div class="totals-panel">
+          <div class="totals-row totals-grand">
+            <span>Receive total</span>
+            <strong>{{ itemsTotal | bdNumber }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline-green btn-sm" (click)="onClear()">
+          Clear
+        </button>
+        <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">
+          {{ loading ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
