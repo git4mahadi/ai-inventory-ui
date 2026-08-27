@@ -1,4 +1,5 @@
 import { NgModule } from '@angular/core';
+import { AgGridAngular } from 'ag-grid-angular';
 import { SharedModule } from '../../shared/shared.module';
 import { LookupCreateComponent } from './lookup-create/lookup-create.component';
 import { LookupEditComponent } from './lookup-edit/lookup-edit.component';
@@ -11,6 +12,6 @@ import { LookupsRoutingModule } from './lookups-routing.module';
     LookupCreateComponent,
     LookupEditComponent,
   ],
-  imports: [SharedModule, LookupsRoutingModule],
+  imports: [SharedModule, LookupsRoutingModule, AgGridAngular],
 })
 export class LookupsModule {}

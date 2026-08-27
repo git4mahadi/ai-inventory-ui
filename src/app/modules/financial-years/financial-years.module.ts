@@ -1,4 +1,5 @@
 import { NgModule } from '@angular/core';
+import { AgGridAngular } from 'ag-grid-angular';
 import { SharedModule } from '../../shared/shared.module';
 import { FinancialYearCreateComponent } from './financial-year-create/financial-year-create.component';
 import { FinancialYearEditComponent } from './financial-year-edit/financial-year-edit.component';
@@ -11,6 +12,6 @@ import { FinancialYearsRoutingModule } from './financial-years-routing.module';
     FinancialYearCreateComponent,
     FinancialYearEditComponent,
   ],
-  imports: [SharedModule, FinancialYearsRoutingModule],
+  imports: [SharedModule, FinancialYearsRoutingModule, AgGridAngular],
 })
 export class FinancialYearsModule {}

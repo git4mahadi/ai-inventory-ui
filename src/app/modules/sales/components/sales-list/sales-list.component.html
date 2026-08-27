@@ -4,6 +4,7 @@
       <p class="page-eyebrow mb-1">Sales</p>
       <h1 class="page-title h4 mb-1">Sales list</h1>
       <p class="text-muted small mb-0">All recorded sales items.</p>
+      <span class="toolbar-meta">{{ sales.length | bdNumber }} total</span>
     </div>
     <a routerLink="/sales/create" class="btn btn-green btn-sm">Create sale</a>
   </div>
@@ -15,42 +16,22 @@
         <a routerLink="/sales/create" class="btn btn-green btn-sm">Create first sale</a>
       </div>
     } @else {
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th scope="col">Date</th>
-              <th scope="col">Item</th>
-              <th scope="col">Customer</th>
-              <th scope="col" class="text-end">Qty</th>
-              <th scope="col" class="text-end">Unit price</th>
-              <th scope="col" class="text-end">Total</th>
-              <th scope="col">Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (sale of sales; track sale.id) {
-              <tr>
-                <td>{{ sale.soldAt | date: 'mediumDate' }}</td>
-                <td class="fw-semibold">{{ sale.itemName }}</td>
-                <td>{{ sale.customerName }}</td>
-                <td class="text-end">{{ sale.quantity | bdNumber }}</td>
-                <td class="text-end">{{ sale.unitPrice | bdNumber }}</td>
-                <td class="text-end">{{ getTotal(sale) | bdNumber }}</td>
-                <td class="text-muted small">{{ sale.notes || '—' }}</td>
-              </tr>
-            }
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="5" class="text-end fw-semibold">Grand total</td>
-              <td class="text-end fw-semibold">
-                {{ getGrandTotal() | bdNumber }}
-              </td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
+      <div class="app-data-grid sales-grid" aria-label="Sales list">
+        <ag-grid-angular
+          [theme]="gridTheme"
+          [rowData]="sales"
+          [columnDefs]="columnDefs"
+          [defaultColDef]="defaultColDef"
+          [pinnedBottomRowData]="grandTotalRow"
+          [pagination]="true"
+          [paginationPageSize]="10"
+          [paginationPageSizeSelector]="false"
+          [headerHeight]="41"
+          [rowHeight]="41"
+          [animateRows]="false"
+          [suppressCellFocus]="true"
+          [suppressRowHoverHighlight]="false"
+        />
       </div>
     }
   </div>

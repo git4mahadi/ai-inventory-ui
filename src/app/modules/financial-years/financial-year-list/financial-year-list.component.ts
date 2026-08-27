@@ -1,12 +1,29 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
+import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
+import {
+  AllCommunityModule,
+  CellClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+  IDatasource,
+  IGetRowsParams,
+  ModuleRegistry,
+  PaginationNumberFormatterParams,
+} from 'ag-grid-community';
+import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
 import { normalizePage } from '../../../core/utils/api-response.util';
 import { toDisplayDate } from '../../../core/utils/date.util';
 import { FinancialYearResponse } from '../../../models/response/FinancialYearResponse';
 import { FinancialYearSearchDto } from '../../../models/search/FinancialYearSearchDto';
 import { FinancialYearApiService } from '../../../services/FinancialYearApiService';
+import { appGridDefaultColDef, appGridTheme } from '../../../shared/utils/ag-grid.util';
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 @Component({
   selector: 'app-financial-year-list',
@@ -16,10 +33,85 @@ import { FinancialYearApiService } from '../../../services/FinancialYearApiServi
 })
 export class FinancialYearListComponent implements OnInit {
   readonly searchForm: FormGroup;
+  readonly columnDefs: ColDef<FinancialYearResponse>[] = [
+    {
+      field: 'fyCode',
+      headerName: 'Code',
+      flex: 0.9,
+      minWidth: 125,
+      cellClass: 'fy-code',
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      field: 'startDate',
+      headerName: 'Start',
+      flex: 0.9,
+      minWidth: 120,
+      cellClass: 'cell-mono',
+      valueFormatter: (params) => this.formatDate(params.value),
+    },
+    {
+      field: 'endDate',
+      headerName: 'End',
+      flex: 0.9,
+      minWidth: 120,
+      cellClass: 'cell-mono',
+      valueFormatter: (params) => this.formatDate(params.value),
+    },
+    {
+      field: 'isCurrent',
+      headerName: 'Current',
+      flex: 0.8,
+      minWidth: 100,
+      valueFormatter: (params) => (params.value ? 'Yes' : 'No'),
+    },
+    {
+      field: 'description',
+      headerName: 'Description',
+      flex: 1.4,
+      minWidth: 180,
+      cellClass: 'cell-muted',
+      tooltipField: 'description',
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      field: 'enabled',
+      headerName: 'Enabled',
+      width: 90,
+      minWidth: 90,
+      maxWidth: 90,
+      cellClass: 'col-enabled',
+      sortable: false,
+      cellRenderer: (params: ICellRendererParams<FinancialYearResponse>) =>
+        this.renderEnabledCell(!!params.value),
+    },
+    {
+      colId: 'actions',
+      headerName: 'Actions',
+      width: 102,
+      minWidth: 102,
+      maxWidth: 102,
+      cellClass: 'col-actions',
+      sortable: false,
+      resizable: false,
+      cellRenderer: (params: ICellRendererParams<FinancialYearResponse>) =>
+        this.renderActionsCell(params.data),
+    },
+  ];
+  readonly defaultColDef = appGridDefaultColDef;
+  readonly gridTheme = appGridTheme;
+  readonly dataSource: IDatasource = {
+    getRows: (params) => this.getFinancialYearRows(params),
+  };
+  readonly paginationNumberFormatter = (
+    params: PaginationNumberFormatterParams<FinancialYearResponse>,
+  ): string => formatToBdNumberingSystem(params.value, 0);
   financialYears: FinancialYearResponse[] = [];
   loading = false;
+  hasLoaded = false;
   deletingId: string | null = null;
   pendingDelete: FinancialYearResponse | null = null;
+  private gridApi?: GridApi<FinancialYearResponse>;
 
   page = 0;
   size = 10;
@@ -30,6 +122,7 @@ export class FinancialYearListComponent implements OnInit {
     private readonly formBuilder: FormBuilder,
     private readonly financialYearApi: FinancialYearApiService,
     private readonly toastr: ToastrService,
+    private readonly router: Router,
   ) {
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
@@ -39,12 +132,26 @@ export class FinancialYearListComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadFinancialYears();
   }
 
-  get emptyRowSlots(): number[] {
-    const missing = Math.max(0, this.size - this.financialYears.length);
-    return Array.from({ length: missing }, (_, i) => i);
+  onGridReady(event: GridReadyEvent<FinancialYearResponse>): void {
+    this.gridApi = event.api;
+  }
+
+  onCellClicked(event: CellClickedEvent<FinancialYearResponse>): void {
+    const target = event.event?.target;
+    if (!(target instanceof HTMLElement) || event.colDef.colId !== 'actions' || !event.data) {
+      return;
+    }
+
+    const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
+    if (action === 'edit' && event.data.id) {
+      void this.router.navigate(['/financial-years/edit', event.data.id], {
+        state: { financialYear: event.data },
+      });
+    } else if (action === 'delete') {
+      this.requestDelete(event.data);
+    }
   }
 
   get deleteDialogMessage(): string {
@@ -59,9 +166,11 @@ export class FinancialYearListComponent implements OnInit {
     return toDisplayDate(value) || '—';
   }
 
-  loadFinancialYears(): void {
+  private getFinancialYearRows(params: IGetRowsParams<FinancialYearResponse>): void {
     this.loading = true;
     const formValue = this.searchForm.value;
+    const pageSize = this.size;
+    const pageNumber = Math.floor(params.startRow / pageSize);
     const request = new FinancialYearSearchDto({
       searchTerm: formValue.searchTerm?.trim() || undefined,
       fyCode: formValue.fyCode?.trim() || undefined,
@@ -69,8 +178,8 @@ export class FinancialYearListComponent implements OnInit {
         formValue.isCurrent === null || formValue.isCurrent === undefined
           ? undefined
           : !!formValue.isCurrent,
-      page: this.page,
-      size: this.size,
+      page: pageNumber,
+      size: pageSize,
     });
 
     this.financialYearApi
@@ -79,22 +188,26 @@ export class FinancialYearListComponent implements OnInit {
       .subscribe({
         next: (result) => {
           const page = normalizePage<FinancialYearResponse>(result);
-          this.financialYears = [...(page.content ?? [])];
-          this.totalElements = page.totalElements ?? this.financialYears.length;
-          this.totalPages = page.totalPages ?? 1;
-          this.page = page.number ?? this.page;
+          const rows = [...(page.content ?? [])];
+          this.financialYears = rows;
+          this.totalElements = page.totalElements ?? rows.length;
+          this.totalPages = page.totalPages ?? Math.ceil(this.totalElements / pageSize);
+          this.page = pageNumber;
+          this.hasLoaded = true;
+          params.successCallback(rows, this.totalElements);
         },
         error: () => {
           this.financialYears = [];
           this.totalElements = 0;
           this.totalPages = 0;
+          this.hasLoaded = true;
+          params.failCallback();
         },
       });
   }
 
   onSearch(): void {
-    this.page = 0;
-    this.loadFinancialYears();
+    this.reloadGrid();
   }
 
   onReset(): void {
@@ -103,16 +216,7 @@ export class FinancialYearListComponent implements OnInit {
       fyCode: '',
       isCurrent: null,
     });
-    this.page = 0;
-    this.loadFinancialYears();
-  }
-
-  goToPage(nextPage: number): void {
-    if (nextPage < 0 || nextPage >= this.totalPages || nextPage === this.page) {
-      return;
-    }
-    this.page = nextPage;
-    this.loadFinancialYears();
+    this.reloadGrid();
   }
 
   requestDelete(financialYear: FinancialYearResponse): void {
@@ -136,22 +240,73 @@ export class FinancialYearListComponent implements OnInit {
     }
 
     this.deletingId = financialYear.id;
+    this.gridApi?.refreshCells({
+      rowNodes: this.gridApi
+        .getRenderedNodes()
+        .filter((rowNode) => rowNode.data?.id === financialYear.id),
+      columns: ['actions'],
+      force: true,
+    });
     this.financialYearApi
       .deleteFinancialYear(financialYear.id)
       .pipe(
         finalize(() => {
           this.deletingId = null;
           this.pendingDelete = null;
+          this.gridApi?.refreshCells({
+            columns: ['actions'],
+            force: true,
+          });
         }),
       )
       .subscribe({
         next: () => {
           this.toastr.success('Financial year deleted successfully');
-          if (this.financialYears.length === 1 && this.page > 0) {
-            this.page -= 1;
-          }
-          this.loadFinancialYears();
+          this.gridApi?.refreshInfiniteCache();
         },
       });
+  }
+
+  private reloadGrid(): void {
+    this.hasLoaded = false;
+    this.loading = true;
+    this.financialYears = [];
+    this.totalElements = 0;
+    this.totalPages = 0;
+    this.gridApi?.setGridOption('datasource', this.dataSource);
+  }
+
+  private renderEnabledCell(enabled: boolean): string {
+    const icon = enabled ? 'icon-enabled.svg' : 'icon-disabled.svg';
+    const state = enabled ? 'enabled' : 'disabled';
+    return `
+      <span class="enabled-status is-${state}" title="${enabled ? 'Enabled' : 'Disabled'}">
+        <span class="enabled-status-icon">
+          <img src="/assets/svg/${icon}" alt="" width="12" height="12" />
+        </span>
+      </span>
+    `;
+  }
+
+  private renderActionsCell(financialYear: FinancialYearResponse | undefined): string {
+    if (!financialYear) {
+      return '';
+    }
+
+    const deleteContent =
+      this.deletingId === financialYear.id
+        ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
+        : '<img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />';
+
+    return `
+      <div class="row-actions">
+        <button type="button" class="icon-action icon-edit" data-action="edit" title="Edit" aria-label="Edit financial year">
+          <img src="/assets/svg/icon-edit.svg" alt="" width="14" height="14" aria-hidden="true" />
+        </button>
+        <button type="button" class="icon-action icon-delete" data-action="delete" title="Delete" aria-label="Delete financial year"${this.deletingId === financialYear.id ? ' disabled' : ''}>
+          ${deleteContent}
+        </button>
+      </div>
+    `;
   }
 }

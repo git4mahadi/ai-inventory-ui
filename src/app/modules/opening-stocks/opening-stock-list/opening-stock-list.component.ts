@@ -1,8 +1,22 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
+import { Router } from '@angular/router';
 import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
+import {
+  AllCommunityModule,
+  CellClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+  IDatasource,
+  IGetRowsParams,
+  ModuleRegistry,
+  PaginationNumberFormatterParams,
+} from 'ag-grid-community';
+import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
 import { normalizePage } from '../../../core/utils/api-response.util';
 import { toApiDate } from '../../../core/utils/date.util';
 import { FinancialYearResponse } from '../../../models/response/FinancialYearResponse';
@@ -14,6 +28,9 @@ import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
 import { FinancialYearApiService } from '../../../services/FinancialYearApiService';
 import { OpeningStockApiService } from '../../../services/OpeningStockApiService';
 import { StoreApiService } from '../../../services/StoreApiService';
+import { appGridDefaultColDef, appGridTheme } from '../../../shared/utils/ag-grid.util';
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 @Component({
   selector: 'app-opening-stock-list',
@@ -30,14 +47,78 @@ export class OpeningStockListComponent implements OnInit {
     showWeekNumbers: false,
     customTodayClass: 'bs-datepicker-today',
   };
+  readonly columnDefs: ColDef<OpeningStockResponse>[] = [
+    {
+      field: 'openingStockNcId',
+      headerName: 'NC ID',
+      flex: 1,
+      minWidth: 145,
+      cellClass: 'item-name cell-mono',
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      field: 'challanNo',
+      headerName: 'Challan no',
+      flex: 0.9,
+      minWidth: 125,
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      field: 'challanDateFormatted',
+      headerName: 'Date',
+      flex: 0.85,
+      minWidth: 115,
+      cellClass: 'cell-mono',
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      colId: 'financialYear',
+      headerName: 'FY',
+      flex: 0.8,
+      minWidth: 105,
+      valueGetter: (params) => (params.data ? this.fyName(params.data) : '—'),
+    },
+    {
+      colId: 'store',
+      headerName: 'Store',
+      flex: 1.4,
+      minWidth: 180,
+      cellClass: 'cell-muted',
+      valueGetter: (params) => (params.data ? this.storeName(params.data.storeId) : '—'),
+      tooltipValueGetter: (params) =>
+        params.data ? this.storeName(params.data.storeId) : '—',
+    },
+    {
+      colId: 'actions',
+      headerName: 'Actions',
+      width: 102,
+      minWidth: 102,
+      maxWidth: 102,
+      cellClass: 'col-actions',
+      sortable: false,
+      resizable: false,
+      cellRenderer: (params: ICellRendererParams<OpeningStockResponse>) =>
+        this.renderActionsCell(params.data),
+    },
+  ];
+  readonly defaultColDef = appGridDefaultColDef;
+  readonly gridTheme = appGridTheme;
+  readonly dataSource: IDatasource = {
+    getRows: (params) => this.getOpeningStockRows(params),
+  };
+  readonly paginationNumberFormatter = (
+    params: PaginationNumberFormatterParams<OpeningStockResponse>,
+  ): string => formatToBdNumberingSystem(params.value, 0);
 
   openingStocks: OpeningStockResponse[] = [];
   storeOptions: StoreResponse[] = [];
   financialYearOptions: FinancialYearResponse[] = [];
 
   loading = false;
+  hasLoaded = false;
   deletingId: string | null = null;
   pendingDelete: OpeningStockResponse | null = null;
+  private gridApi?: GridApi<OpeningStockResponse>;
 
   page = 0;
   size = 10;
@@ -50,6 +131,7 @@ export class OpeningStockListComponent implements OnInit {
     private readonly storeApi: StoreApiService,
     private readonly financialYearApi: FinancialYearApiService,
     private readonly toastr: ToastrService,
+    private readonly router: Router,
   ) {
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
@@ -62,12 +144,24 @@ export class OpeningStockListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadLookups();
-    this.loadOpeningStocks();
   }
 
-  get emptyRowSlots(): number[] {
-    const missing = Math.max(0, this.size - this.openingStocks.length);
-    return Array.from({ length: missing }, (_, i) => i);
+  onGridReady(event: GridReadyEvent<OpeningStockResponse>): void {
+    this.gridApi = event.api;
+  }
+
+  onCellClicked(event: CellClickedEvent<OpeningStockResponse>): void {
+    const target = event.event?.target;
+    if (!(target instanceof HTMLElement) || event.colDef.colId !== 'actions' || !event.data) {
+      return;
+    }
+
+    const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
+    if (action === 'edit' && event.data.id) {
+      void this.router.navigate(['/opening-stocks/edit', event.data.id]);
+    } else if (action === 'delete') {
+      this.requestDelete(event.data);
+    }
   }
 
   get deleteDialogMessage(): string {
@@ -110,17 +204,19 @@ export class OpeningStockListComponent implements OnInit {
     return fy?.fyCode || '—';
   }
 
-  loadOpeningStocks(): void {
+  private getOpeningStockRows(params: IGetRowsParams<OpeningStockResponse>): void {
     this.loading = true;
     const formValue = this.searchForm.value;
+    const pageSize = this.size;
+    const pageNumber = Math.floor(params.startRow / pageSize);
     const request = new OpeningStockSearchDto({
       searchTerm: formValue.searchTerm?.trim() || undefined,
       challanNo: formValue.challanNo?.trim() || undefined,
       storeId: formValue.storeId || undefined,
       financialYearId: formValue.financialYearId || undefined,
       challanDate: toApiDate(formValue.challanDate),
-      page: this.page,
-      size: this.size,
+      page: pageNumber,
+      size: pageSize,
     });
 
     this.openingStockApi
@@ -129,22 +225,26 @@ export class OpeningStockListComponent implements OnInit {
       .subscribe({
         next: (result) => {
           const page = normalizePage<OpeningStockResponse>(result);
-          this.openingStocks = [...(page.content ?? [])];
-          this.totalElements = page.totalElements ?? this.openingStocks.length;
-          this.totalPages = page.totalPages ?? 1;
-          this.page = page.number ?? this.page;
+          const rows = [...(page.content ?? [])];
+          this.openingStocks = rows;
+          this.totalElements = page.totalElements ?? rows.length;
+          this.totalPages = page.totalPages ?? Math.ceil(this.totalElements / pageSize);
+          this.page = pageNumber;
+          this.hasLoaded = true;
+          params.successCallback(rows, this.totalElements);
         },
         error: () => {
           this.openingStocks = [];
           this.totalElements = 0;
           this.totalPages = 0;
+          this.hasLoaded = true;
+          params.failCallback();
         },
       });
   }
 
   onSearch(): void {
-    this.page = 0;
-    this.loadOpeningStocks();
+    this.reloadGrid();
   }
 
   onReset(): void {
@@ -155,16 +255,7 @@ export class OpeningStockListComponent implements OnInit {
       financialYearId: null,
       challanDate: null,
     });
-    this.page = 0;
-    this.loadOpeningStocks();
-  }
-
-  goToPage(nextPage: number): void {
-    if (nextPage < 0 || nextPage >= this.totalPages || nextPage === this.page) {
-      return;
-    }
-    this.page = nextPage;
-    this.loadOpeningStocks();
+    this.reloadGrid();
   }
 
   requestDelete(row: OpeningStockResponse): void {
@@ -188,23 +279,62 @@ export class OpeningStockListComponent implements OnInit {
     }
 
     this.deletingId = row.id;
+    this.gridApi?.refreshCells({
+      rowNodes: this.gridApi
+        .getRenderedNodes()
+        .filter((rowNode) => rowNode.data?.id === row.id),
+      columns: ['actions'],
+      force: true,
+    });
     this.openingStockApi
       .deleteOpeningStock(row.id)
       .pipe(
         finalize(() => {
           this.deletingId = null;
           this.pendingDelete = null;
+          this.gridApi?.refreshCells({
+            columns: ['actions'],
+            force: true,
+          });
         }),
       )
       .subscribe({
         next: () => {
           this.toastr.success('Opening stock deleted successfully');
-          if (this.openingStocks.length === 1 && this.page > 0) {
-            this.page -= 1;
-          }
-          this.loadOpeningStocks();
+          this.gridApi?.refreshInfiniteCache();
         },
       });
+  }
+
+  private reloadGrid(): void {
+    this.hasLoaded = false;
+    this.loading = true;
+    this.openingStocks = [];
+    this.totalElements = 0;
+    this.totalPages = 0;
+    this.gridApi?.setGridOption('datasource', this.dataSource);
+  }
+
+  private renderActionsCell(row: OpeningStockResponse | undefined): string {
+    if (!row) {
+      return '';
+    }
+
+    const deleteContent =
+      this.deletingId === row.id
+        ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
+        : '<img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />';
+
+    return `
+      <div class="row-actions">
+        <button type="button" class="icon-action icon-edit" data-action="edit" title="Edit" aria-label="Edit opening stock">
+          <img src="/assets/svg/icon-edit.svg" alt="" width="14" height="14" aria-hidden="true" />
+        </button>
+        <button type="button" class="icon-action icon-delete" data-action="delete" title="Delete" aria-label="Delete opening stock"${this.deletingId === row.id ? ' disabled' : ''}>
+          ${deleteContent}
+        </button>
+      </div>
+    `;
   }
 
   private loadLookups(): void {
@@ -212,12 +342,20 @@ export class OpeningStockListComponent implements OnInit {
       .searchList(new StoreSearchDto({ enabled: true }))
       .subscribe((stores) => {
         this.storeOptions = stores ?? [];
+        this.gridApi?.refreshCells({
+          columns: ['store'],
+          force: true,
+        });
       });
 
     this.financialYearApi
       .searchList(new FinancialYearSearchDto({ enabled: true }))
       .subscribe((years) => {
         this.financialYearOptions = years ?? [];
+        this.gridApi?.refreshCells({
+          columns: ['financialYear'],
+          force: true,
+        });
       });
   }
 }

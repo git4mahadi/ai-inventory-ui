@@ -12,6 +12,7 @@ import {
 } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { normalizePage } from '../../../core/utils/api-response.util';
+import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
 import { ItemResponse } from '../../../models/response/ItemResponse';
 import { StockMainResponse } from '../../../models/response/StockMainResponse';
 import { StoreResponse } from '../../../models/response/StoreResponse';
@@ -21,6 +22,18 @@ import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
 import { ItemApiService } from '../../../services/ItemApiService';
 import { StockApiService } from '../../../services/StockApiService';
 import { StoreApiService } from '../../../services/StoreApiService';
+import {
+  AllCommunityModule,
+  ColDef,
+  IDatasource,
+  IGetRowsParams,
+  GridReadyEvent,
+  ModuleRegistry,
+  PaginationNumberFormatterParams,
+} from 'ag-grid-community';
+import { appGridDefaultColDef, appGridTheme } from '../../../shared/utils/ag-grid.util';
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 @Component({
   selector: 'app-stock-list',
@@ -31,12 +44,69 @@ import { StoreApiService } from '../../../services/StoreApiService';
 export class StockListComponent implements OnInit, OnDestroy {
   readonly searchForm: FormGroup;
   readonly itemTypeahead$ = new Subject<string>();
+  readonly columnDefs: ColDef<StockMainResponse>[] = [
+    {
+      field: 'itemName',
+      headerName: 'Item',
+      flex: 1.5,
+      minWidth: 180,
+      cellClass: 'item-name',
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      field: 'storeName',
+      headerName: 'Store',
+      flex: 1.2,
+      minWidth: 160,
+      cellClass: 'cell-muted',
+      tooltipField: 'storeName',
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      field: 'currentQty',
+      headerName: 'Current qty',
+      flex: 0.9,
+      minWidth: 125,
+      cellClass: 'cell-mono',
+      valueFormatter: (params) =>
+        formatToBdNumberingSystem(Number(params.value ?? 0)),
+    },
+    {
+      field: 'reservedQty',
+      headerName: 'Reserved qty',
+      flex: 0.9,
+      minWidth: 125,
+      cellClass: 'cell-mono',
+      valueFormatter: (params) =>
+        formatToBdNumberingSystem(Number(params.value ?? 0)),
+    },
+    {
+      colId: 'availableQty',
+      headerName: 'Available',
+      flex: 0.9,
+      minWidth: 125,
+      cellClass: 'cell-mono available-qty',
+      valueGetter: (params) =>
+        params.data ? this.availableQty(params.data) : 0,
+      valueFormatter: (params) =>
+        formatToBdNumberingSystem(Number(params.value ?? 0)),
+    },
+  ];
+  readonly defaultColDef = appGridDefaultColDef;
+  readonly gridTheme = appGridTheme;
+  readonly dataSource: IDatasource = {
+    getRows: (params) => this.getStockRows(params),
+  };
+  readonly paginationNumberFormatter = (
+    params: PaginationNumberFormatterParams<StockMainResponse>,
+  ): string => formatToBdNumberingSystem(params.value, 0);
 
   stocks: StockMainResponse[] = [];
   storeOptions: StoreResponse[] = [];
   itemOptions: ItemResponse[] = [];
 
   loading = false;
+  hasLoaded = false;
   loadingStores = false;
   loadingItems = false;
 
@@ -46,6 +116,7 @@ export class StockListComponent implements OnInit, OnDestroy {
   totalPages = 0;
 
   private readonly destroy$ = new Subject<void>();
+  private gridApi?: GridReadyEvent<StockMainResponse>['api'];
 
   constructor(
     private readonly formBuilder: FormBuilder,
@@ -63,7 +134,6 @@ export class StockListComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.setupItemTypeahead();
     this.loadStores();
-    this.loadStocks();
   }
 
   ngOnDestroy(): void {
@@ -71,9 +141,8 @@ export class StockListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  get emptyRowSlots(): number[] {
-    const missing = Math.max(0, this.size - this.stocks.length);
-    return Array.from({ length: missing }, (_, i) => i);
+  onGridReady(event: GridReadyEvent<StockMainResponse>): void {
+    this.gridApi = event.api;
   }
 
   storeLabel(store: StoreResponse): string {
@@ -90,15 +159,17 @@ export class StockListComponent implements OnInit, OnDestroy {
     return Number(row.currentQty ?? 0) - Number(row.reservedQty ?? 0);
   }
 
-  loadStocks(): void {
+  private getStockRows(params: IGetRowsParams<StockMainResponse>): void {
     this.loading = true;
     const formValue = this.searchForm.value;
+    const pageSize = this.size;
+    const pageNumber = Math.floor(params.startRow / pageSize);
     const request = new StockMainSearchDto({
       searchTerm: formValue.searchTerm?.trim() || undefined,
       storeId: formValue.storeId || undefined,
       itemId: formValue.itemId || undefined,
-      page: this.page,
-      size: this.size,
+      page: pageNumber,
+      size: pageSize,
     });
 
     this.stockApi
@@ -107,22 +178,26 @@ export class StockListComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (result) => {
           const page = normalizePage<StockMainResponse>(result);
-          this.stocks = [...(page.content ?? [])];
-          this.totalElements = page.totalElements ?? this.stocks.length;
-          this.totalPages = page.totalPages ?? 1;
-          this.page = page.number ?? this.page;
+          const rows = [...(page.content ?? [])];
+          this.stocks = rows;
+          this.totalElements = page.totalElements ?? rows.length;
+          this.totalPages = page.totalPages ?? Math.ceil(this.totalElements / pageSize);
+          this.page = pageNumber;
+          this.hasLoaded = true;
+          params.successCallback(rows, this.totalElements);
         },
         error: () => {
           this.stocks = [];
           this.totalElements = 0;
           this.totalPages = 0;
+          this.hasLoaded = true;
+          params.failCallback();
         },
       });
   }
 
   onSearch(): void {
-    this.page = 0;
-    this.loadStocks();
+    this.reloadGrid();
   }
 
   onReset(): void {
@@ -132,16 +207,16 @@ export class StockListComponent implements OnInit, OnDestroy {
       itemId: null,
     });
     this.itemOptions = [];
-    this.page = 0;
-    this.loadStocks();
+    this.reloadGrid();
   }
 
-  goToPage(nextPage: number): void {
-    if (nextPage < 0 || nextPage >= this.totalPages || nextPage === this.page) {
-      return;
-    }
-    this.page = nextPage;
-    this.loadStocks();
+  private reloadGrid(): void {
+    this.hasLoaded = false;
+    this.loading = true;
+    this.stocks = [];
+    this.totalElements = 0;
+    this.totalPages = 0;
+    this.gridApi?.setGridOption('datasource', this.dataSource);
   }
 
   private loadStores(): void {

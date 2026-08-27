@@ -1,4 +1,5 @@
 import { NgModule } from '@angular/core';
+import { AgGridAngular } from 'ag-grid-angular';
 import { SharedModule } from '../../shared/shared.module';
 import { ItemCreateComponent } from './item-create/item-create.component';
 import { ItemEditComponent } from './item-edit/item-edit.component';
@@ -7,6 +8,6 @@ import { ItemsRoutingModule } from './items-routing.module';
 
 @NgModule({
   declarations: [ItemListComponent, ItemCreateComponent, ItemEditComponent],
-  imports: [SharedModule, ItemsRoutingModule],
+  imports: [SharedModule, ItemsRoutingModule, AgGridAngular],
 })
 export class ItemsModule {}

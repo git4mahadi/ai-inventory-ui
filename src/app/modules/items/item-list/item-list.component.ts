@@ -1,11 +1,29 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
+import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
+import {
+  AllCommunityModule,
+  CellClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+  IDatasource,
+  IGetRowsParams,
+  ModuleRegistry,
+  PaginationNumberFormatterParams,
+  themeQuartz,
+} from 'ag-grid-community';
+import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
 import { normalizePage } from '../../../core/utils/api-response.util';
 import { ItemResponse } from '../../../models/response/ItemResponse';
 import { ItemSearchDto } from '../../../models/search/ItemSearchDto';
 import { ItemApiService } from '../../../services/ItemApiService';
+import { appGridDefaultColDef, appGridTheme } from '../../../shared/utils/ag-grid.util';
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 @Component({
   selector: 'app-item-list',
@@ -15,10 +33,101 @@ import { ItemApiService } from '../../../services/ItemApiService';
 })
 export class ItemListComponent implements OnInit {
   readonly searchForm: FormGroup;
+  readonly columnDefs: ColDef<ItemResponse>[] = [
+    {
+      field: 'itemName',
+      headerName: 'Name',
+      flex: 1.2,
+      minWidth: 150,
+      cellClass: 'item-name',
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      field: 'itemCode',
+      headerName: 'Code',
+      flex: 0.8,
+      minWidth: 110,
+      cellClass: 'cell-mono',
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      field: 'itemBarcode',
+      headerName: 'Barcode',
+      flex: 1,
+      minWidth: 135,
+      cellClass: 'cell-mono',
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      field: 'supplierName',
+      headerName: 'Supplier',
+      flex: 1.2,
+      minWidth: 160,
+      cellClass: 'cell-muted',
+      tooltipField: 'supplierName',
+      valueFormatter: (params) => params.value || '—',
+    },
+    {
+      field: 'purchaseRate',
+      headerName: 'Purchase',
+      flex: 0.8,
+      minWidth: 110,
+      cellClass: 'cell-mono',
+      valueFormatter: (params) => this.formatNumber(params.value),
+    },
+    {
+      field: 'salesRate',
+      headerName: 'Sales',
+      flex: 0.8,
+      minWidth: 110,
+      cellClass: 'cell-mono',
+      valueFormatter: (params) => this.formatNumber(params.value),
+    },
+    {
+      field: 'isForeignItem',
+      headerName: 'Foreign',
+      flex: 0.8,
+      minWidth: 100,
+      valueFormatter: (params) => (params.value ? 'Yes' : 'No'),
+    },
+    {
+      field: 'enabled',
+      headerName: 'Enabled',
+      width: 90,
+      minWidth: 90,
+      maxWidth: 90,
+      cellClass: 'col-enabled',
+      sortable: false,
+      cellRenderer: (params: ICellRendererParams<ItemResponse>) =>
+        this.renderEnabledCell(!!params.value),
+    },
+    {
+      colId: 'actions',
+      headerName: 'Actions',
+      width: 102,
+      minWidth: 102,
+      maxWidth: 102,
+      cellClass: 'col-actions',
+      sortable: false,
+      resizable: false,
+      cellRenderer: (params: ICellRendererParams<ItemResponse>) =>
+        this.renderActionsCell(params.data),
+    },
+  ];
+  readonly defaultColDef = appGridDefaultColDef;
+  readonly gridTheme = appGridTheme;
+  readonly dataSource: IDatasource = {
+    getRows: (params) => this.getItemRows(params),
+  };
+  readonly paginationNumberFormatter = (
+    params: PaginationNumberFormatterParams<ItemResponse>,
+  ): string => formatToBdNumberingSystem(params.value, 0);
   items: ItemResponse[] = [];
   loading = false;
+  hasLoaded = false;
   deletingId: string | null = null;
   pendingDelete: ItemResponse | null = null;
+  private gridApi?: GridApi<ItemResponse>;
 
   page = 0;
   size = 10;
@@ -29,6 +138,7 @@ export class ItemListComponent implements OnInit {
     private readonly formBuilder: FormBuilder,
     private readonly itemApi: ItemApiService,
     private readonly toastr: ToastrService,
+    private readonly router: Router,
   ) {
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
@@ -39,12 +149,26 @@ export class ItemListComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadItems();
   }
 
-  get emptyRowSlots(): number[] {
-    const missing = Math.max(0, this.size - this.items.length);
-    return Array.from({ length: missing }, (_, i) => i);
+  onGridReady(event: GridReadyEvent<ItemResponse>): void {
+    this.gridApi = event.api;
+  }
+
+  onCellClicked(event: CellClickedEvent<ItemResponse>): void {
+    const target = event.event?.target;
+    if (!(target instanceof HTMLElement) || event.colDef.colId !== 'actions' || !event.data) {
+      return;
+    }
+
+    const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
+    if (action === 'edit' && event.data.id) {
+      void this.router.navigate(['/items/edit', event.data.id], {
+        state: { item: event.data },
+      });
+    } else if (action === 'delete') {
+      this.requestDelete(event.data);
+    }
   }
 
   get deleteDialogMessage(): string {
@@ -55,16 +179,18 @@ export class ItemListComponent implements OnInit {
     return this.pendingDelete?.itemName || this.pendingDelete?.id || '';
   }
 
-  loadItems(): void {
+  private getItemRows(params: IGetRowsParams<ItemResponse>): void {
     this.loading = true;
     const formValue = this.searchForm.value;
+    const pageSize = this.size;
+    const pageNumber = Math.floor(params.startRow / pageSize);
     const request = new ItemSearchDto({
       searchTerm: formValue.searchTerm?.trim() || undefined,
       itemName: formValue.itemName?.trim() || undefined,
       itemCode: formValue.itemCode?.trim() || undefined,
       itemBarcode: formValue.itemBarcode?.trim() || undefined,
-      page: this.page,
-      size: this.size,
+      page: pageNumber,
+      size: pageSize,
     });
 
     this.itemApi
@@ -73,22 +199,26 @@ export class ItemListComponent implements OnInit {
       .subscribe({
         next: (result) => {
           const page = normalizePage<ItemResponse>(result);
-          this.items = [...(page.content ?? [])];
-          this.totalElements = page.totalElements ?? this.items.length;
-          this.totalPages = page.totalPages ?? 1;
-          this.page = page.number ?? this.page;
+          const rows = [...(page.content ?? [])];
+          this.items = rows;
+          this.totalElements = page.totalElements ?? rows.length;
+          this.totalPages = page.totalPages ?? Math.ceil(this.totalElements / pageSize);
+          this.page = pageNumber;
+          this.hasLoaded = true;
+          params.successCallback(rows, this.totalElements);
         },
         error: () => {
           this.items = [];
           this.totalElements = 0;
           this.totalPages = 0;
+          this.hasLoaded = true;
+          params.failCallback();
         },
       });
   }
 
   onSearch(): void {
-    this.page = 0;
-    this.loadItems();
+    this.reloadGrid();
   }
 
   onReset(): void {
@@ -98,16 +228,7 @@ export class ItemListComponent implements OnInit {
       itemCode: '',
       itemBarcode: '',
     });
-    this.page = 0;
-    this.loadItems();
-  }
-
-  goToPage(nextPage: number): void {
-    if (nextPage < 0 || nextPage >= this.totalPages || nextPage === this.page) {
-      return;
-    }
-    this.page = nextPage;
-    this.loadItems();
+    this.reloadGrid();
   }
 
   requestDelete(item: ItemResponse): void {
@@ -142,11 +263,55 @@ export class ItemListComponent implements OnInit {
       .subscribe({
         next: () => {
           this.toastr.success('Item deleted successfully');
-          if (this.items.length === 1 && this.page > 0) {
-            this.page -= 1;
-          }
-          this.loadItems();
+          this.gridApi?.refreshInfiniteCache();
         },
       });
+  }
+
+  private reloadGrid(): void {
+    this.hasLoaded = false;
+    this.loading = true;
+    this.items = [];
+    this.totalElements = 0;
+    this.totalPages = 0;
+    this.gridApi?.setGridOption('datasource', this.dataSource);
+  }
+
+  private formatNumber(value: number | undefined): string {
+    return value == null ? '—' : formatToBdNumberingSystem(value);
+  }
+
+  private renderEnabledCell(enabled: boolean): string {
+    const icon = enabled ? 'icon-enabled.svg' : 'icon-disabled.svg';
+    const state = enabled ? 'enabled' : 'disabled';
+    return `
+      <span class="enabled-status is-${state}" title="${enabled ? 'Enabled' : 'Disabled'}">
+        <span class="enabled-status-icon">
+          <img src="/assets/svg/${icon}" alt="" width="12" height="12" />
+        </span>
+      </span>
+    `;
+  }
+
+  private renderActionsCell(item: ItemResponse | undefined): string {
+    if (!item) {
+      return '';
+    }
+
+    const deleteContent =
+      this.deletingId === item.id
+        ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
+        : '<img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />';
+
+    return `
+      <div class="row-actions">
+        <button type="button" class="icon-action icon-edit" data-action="edit" title="Edit" aria-label="Edit item">
+          <img src="/assets/svg/icon-edit.svg" alt="" width="14" height="14" aria-hidden="true" />
+        </button>
+        <button type="button" class="icon-action icon-delete" data-action="delete" title="Delete" aria-label="Delete item"${this.deletingId === item.id ? ' disabled' : ''}>
+          ${deleteContent}
+        </button>
+      </div>
+    `;
   }
 }

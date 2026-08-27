@@ -1,4 +1,5 @@
 import { NgModule } from '@angular/core';
+import { AgGridAngular } from 'ag-grid-angular';
 import { SharedModule } from '../../shared/shared.module';
 import { OpeningStockCreateComponent } from './opening-stock-create/opening-stock-create.component';
 import { OpeningStockEditComponent } from './opening-stock-edit/opening-stock-edit.component';
@@ -11,6 +12,6 @@ import { OpeningStocksRoutingModule } from './opening-stocks-routing.module';
     OpeningStockCreateComponent,
     OpeningStockEditComponent,
   ],
-  imports: [SharedModule, OpeningStocksRoutingModule],
+  imports: [SharedModule, OpeningStocksRoutingModule, AgGridAngular],
 })
 export class OpeningStocksModule {}

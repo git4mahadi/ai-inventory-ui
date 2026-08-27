@@ -30,6 +30,17 @@ export function normalizePage<T>(result: unknown): Page<T> {
   const value = result as Record<string, unknown>;
 
   if (Array.isArray(value['content'])) {
+    const nestedPage = value['page'];
+    if (nestedPage && typeof nestedPage === 'object') {
+      const pagination = nestedPage as Record<string, unknown>;
+      return {
+        ...(value as Page<T>),
+        size: pagination['size'] as number | undefined,
+        number: pagination['number'] as number | undefined,
+        totalElements: pagination['totalElements'] as number | undefined,
+        totalPages: pagination['totalPages'] as number | undefined,
+      };
+    }
     return value as Page<T>;
   }
 
@@ -37,6 +48,17 @@ export function normalizePage<T>(result: unknown): Page<T> {
   if (nested && typeof nested === 'object') {
     const data = nested as Record<string, unknown>;
     if (Array.isArray(data['content'])) {
+      const nestedPage = data['page'];
+      if (nestedPage && typeof nestedPage === 'object') {
+        const pagination = nestedPage as Record<string, unknown>;
+        return {
+          ...(data as Page<T>),
+          size: pagination['size'] as number | undefined,
+          number: pagination['number'] as number | undefined,
+          totalElements: pagination['totalElements'] as number | undefined,
+          totalPages: pagination['totalPages'] as number | undefined,
+        };
+      }
       return data as Page<T>;
     }
     if (Array.isArray(nested)) {
