@@ -1,0 +1,314 @@
+<div class="sales-create">
+  <div class="form-shell">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Sales Create</h1>
+        <span class="toolbar-meta">New invoice</span>
+      </div>
+      <a routerLink="/sales/list" class="icon-action icon-back" title="Back to list" aria-label="Back to sales list">
+        <span class="icon-graphic" aria-hidden="true"></span>
+      </a>
+    </div>
+
+    <form class="create-form" [formGroup]="salesForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="storeId" class="form-label">
+            Store <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="storeId"
+            class="form-ng-select"
+            formControlName="storeId"
+            placeholder="Select store"
+            [clearable]="false"
+            [searchable]="true"
+            [loading]="loadingStores"
+            [class.is-invalid]="submitted && f['storeId'].invalid"
+          >
+            @for (store of storeOptions; track store.id) {
+              <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+            }
+          </ng-select>
+          @if (submitted && f['storeId'].errors?.['required']) {
+            <div class="invalid-feedback d-block">Store is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="customerId" class="form-label">Customer</label>
+          <ng-select
+            id="customerId"
+            class="form-ng-select"
+            formControlName="customerId"
+            placeholder="Walk-in / type to search"
+            [clearable]="true"
+            [searchable]="true"
+            [typeahead]="customerTypeahead$"
+            [minTermLength]="3"
+            [loading]="loadingCustomers"
+            notFoundText="Type at least 3 characters"
+          >
+            @for (customer of customerOptions; track customer.id) {
+              <ng-option [value]="customer.id">{{ customerLabel(customer) }}</ng-option>
+            }
+          </ng-select>
+        </div>
+
+        <div class="field">
+          <label for="salesDate" class="form-label">
+            Sales date <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="salesDate"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="salesDate"
+            bsDatepicker
+            [bsConfig]="datePickerConfig"
+            placeholder="Select date"
+            autocomplete="off"
+            [class.is-invalid]="submitted && f['salesDate'].invalid"
+          />
+          @if (submitted && f['salesDate'].errors?.['required']) {
+            <div class="invalid-feedback">Sales date is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="paymentMethod" class="form-label">Payment method</label>
+          <ng-select
+            id="paymentMethod"
+            class="form-ng-select"
+            formControlName="paymentMethod"
+            [clearable]="false"
+            [searchable]="false"
+          >
+            @for (method of paymentMethods; track method) {
+              <ng-option [value]="method">{{ paymentLabel(method) }}</ng-option>
+            }
+          </ng-select>
+        </div>
+      </div>
+
+      <section class="picker-card" [formGroup]="pickerForm">
+        <div class="picker-header">
+          <h2 class="section-title">Add item</h2>
+          <span class="picker-hint">Search by name or code. Stock is shown for the selected store.</span>
+        </div>
+        <div class="picker-grid">
+          <div class="field picker-item">
+            <label for="pickerItemId" class="form-label">Item</label>
+            <ng-select
+              #pickerItemSelect
+              id="pickerItemId"
+              class="form-ng-select"
+              formControlName="itemId"
+              placeholder="Type at least 2 characters"
+              [clearable]="true"
+              [searchable]="true"
+              [typeahead]="itemTypeahead$"
+              [minTermLength]="2"
+              [loading]="loadingItems"
+              notFoundText="Type at least 2 characters"
+              (change)="onPickerItemChange($event)"
+            >
+              @for (item of itemOptions; track item.id) {
+                <ng-option [value]="item.id">
+                  <span class="item-option">
+                    <span class="item-option-name">{{ itemLabel(item) }}</span>
+                    <span class="item-option-stock">Stock {{ itemStock(item) | bdNumber }}</span>
+                  </span>
+                </ng-option>
+              }
+            </ng-select>
+          </div>
+          <div class="field">
+            <label class="form-label">Purchase rate</label>
+            <input type="text" class="form-control form-control-sm" formControlName="purchaseRate" readonly />
+          </div>
+          <div class="field">
+            <label class="form-label">Sales rate</label>
+            <input type="text" class="form-control form-control-sm" formControlName="salesRate" readonly />
+          </div>
+          <div class="field">
+            <label class="form-label">Current stock</label>
+            <input type="text" class="form-control form-control-sm" formControlName="currentStock" readonly />
+          </div>
+          <div class="field">
+            <label class="form-label">Quantity</label>
+            <input
+              #pickerQuantityInput
+              type="number"
+              class="form-control form-control-sm"
+              formControlName="quantity"
+              min="0"
+              step="0.01"
+              placeholder="Qty"
+              (keydown.enter)="onPickerQuantityEnter($event)"
+            />
+          </div>
+          <div class="picker-action">
+            <button
+              type="button"
+              class="btn-picker-add"
+              title="Add to cart"
+              aria-label="Add item to cart"
+              (click)="addPickerItem()"
+            >
+              <span class="btn-picker-add-icon" aria-hidden="true"></span>
+              <span class="btn-picker-add-label">Add</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="cart-section">
+        <div class="cart-header">
+          <h2 class="section-title">Cart</h2>
+          <span class="cart-count">{{ cartItems.length | bdNumber: 0 }} item{{ cartItems.length === 1 ? '' : 's' }}</span>
+        </div>
+
+        @if (cartItems.length === 0) {
+          <div class="cart-empty">Search and add items to build this sale.</div>
+        } @else {
+          <div class="cart-table-wrap">
+            <table class="cart-table">
+              <thead>
+                <tr>
+                  <th class="col-item">Item</th>
+                  <th class="col-stock">Stock</th>
+                  <th class="col-qty">Qty</th>
+                  <th class="col-rate">Rate</th>
+                  <th class="col-discount">Discount</th>
+                  <th class="col-line">Line total</th>
+                  <th class="col-remove"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of cartItems; track item.itemId; let i = $index) {
+                  <tr>
+                    <td class="col-item">
+                      <div class="cart-item-name">{{ item.itemName }}</div>
+                      @if (item.itemCode) {
+                        <div class="cart-item-code">{{ item.itemCode }}</div>
+                      }
+                    </td>
+                    <td class="col-stock">{{ item.availableStock | bdNumber }}</td>
+                    <td class="col-qty">
+                      <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.quantity"
+                        (ngModelChange)="onCartQtyChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        min="0.01"
+                        step="0.01"
+                        [max]="item.availableStock"
+                      />
+                    </td>
+                    <td class="col-rate">{{ item.unitPrice | bdNumber }}</td>
+                    <td class="col-discount">
+                      <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.discountAmount"
+                        (ngModelChange)="onCartDiscountChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        min="0"
+                        step="0.01"
+                      />
+                    </td>
+                    <td class="col-line">
+                      <span class="line-total">{{ lineTotal(item) | bdNumber }}</span>
+                    </td>
+                    <td class="col-remove">
+                      <button
+                        type="button"
+                        class="icon-action icon-delete"
+                        title="Remove item"
+                        aria-label="Remove item"
+                        (click)="removeCartItem(i)"
+                      >
+                        <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (submitted && cartItems.length === 0) {
+          <div class="items-error">Add at least one item.</div>
+        }
+      </section>
+
+      <div class="summary-grid">
+        <section class="discount-card">
+          <h2 class="section-title">Gross discount</h2>
+          <p class="picker-hint">Applied across all items. Editing an item discount clears these fields.</p>
+          <div class="discount-fields">
+            <div class="field">
+              <label class="form-label" for="grossDiscountAmount">Amount</label>
+              <input
+                id="grossDiscountAmount"
+                type="number"
+                class="form-control form-control-sm"
+                formControlName="grossDiscountAmount"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                (input)="onGrossAmountChange()"
+              />
+            </div>
+            <div class="field">
+              <label class="form-label" for="grossDiscountPercent">Percent</label>
+              <input
+                id="grossDiscountPercent"
+                type="number"
+                class="form-control form-control-sm"
+                formControlName="grossDiscountPercent"
+                min="0"
+                step="0.01"
+                placeholder="0"
+                (input)="onGrossPercentChange()"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section class="totals-card">
+          <div class="totals-row">
+            <span>Sub total</span>
+            <strong>{{ totals.subTotal | bdNumber }}</strong>
+          </div>
+          <div class="totals-row">
+            <span>Discount</span>
+            <strong>{{ totals.discountAmount | bdNumber }}</strong>
+          </div>
+          <div class="totals-row totals-grand">
+            <span>Grand total</span>
+            <strong>{{ totals.grandTotal | bdNumber }}</strong>
+          </div>
+          <div class="field paid-field">
+            <label class="form-label" for="paidAmount">Paid Amount</label>
+            <input id="paidAmount" type="number" class="form-control form-control-sm" formControlName="paidAmount" min="0" step="0.01" />
+          </div>
+          <div class="totals-row" [class.due-settled]="dueAmount <= 0" [class.due-outstanding]="dueAmount > 0">
+            <span>Due</span>
+            <strong>{{ dueAmount | bdNumber }}</strong>
+          </div>
+        </section>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline-green btn-sm" (click)="onClear()">Clear</button>
+        <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">
+          {{ loading ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

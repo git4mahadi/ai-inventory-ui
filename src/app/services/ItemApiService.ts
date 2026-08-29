@@ -117,6 +117,23 @@ export class ItemApiService {
       );
   }
 
+  searchTermWithStock(data: ItemSearchDto): Observable<ItemResponse[]> {
+    return this.http
+      .post<ApiResponse<ItemResponse[]>>(
+        `${this.baseUrl}/search-term-with-stock`,
+        data,
+      )
+      .pipe(
+        unwrapApiData(),
+        catchError((err: { error?: { message?: string } }) => {
+          this.toast.error(
+            err?.error?.message || 'Failed to search items with stock',
+          );
+          return throwError(() => err);
+        }),
+      );
+  }
+
   private requireItem(result: unknown): ItemResponse {
     const item = normalizeItem(result);
     if (!item) {

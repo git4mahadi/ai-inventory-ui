@@ -1,0 +1,124 @@
+<div class="sales-list">
+  <div class="list-shell">
+    <div class="list-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Sales</h1>
+        @if (hasLoaded) {
+          <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
+        }
+      </div>
+      <a routerLink="/sales/create" class="btn-create" title="Create sale">
+        <span class="icon-plus" aria-hidden="true"></span>
+        <span class="btn-create-label">Create</span>
+      </a>
+    </div>
+
+    <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="searchTerm"
+        placeholder="Search"
+        aria-label="Search term"
+      />
+      <ng-select
+        class="filter-ng-select"
+        formControlName="storeId"
+        placeholder="All stores"
+        [clearable]="true"
+        [searchable]="true"
+        aria-label="Store"
+      >
+        @for (store of storeOptions; track store.id) {
+          <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+        }
+      </ng-select>
+      <ng-select
+        class="filter-ng-select"
+        formControlName="customerId"
+        placeholder="All customers"
+        [clearable]="true"
+        [searchable]="true"
+        [typeahead]="customerTypeahead$"
+        [minTermLength]="3"
+        [loading]="loadingCustomers"
+        notFoundText="Type at least 3 characters"
+        aria-label="Customer"
+      >
+        @for (customer of customerOptions; track customer.id) {
+          <ng-option [value]="customer.id">{{ customerLabel(customer) }}</ng-option>
+        }
+      </ng-select>
+      <ng-select
+        class="filter-ng-select"
+        formControlName="salesStatus"
+        placeholder="All statuses"
+        [clearable]="true"
+        [searchable]="true"
+        aria-label="Status"
+      >
+        @for (status of statusOptions; track status) {
+          <ng-option [value]="status">{{ statusLabel(status) }}</ng-option>
+        }
+      </ng-select>
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="salesDate"
+        bsDatepicker
+        [bsConfig]="datePickerConfig"
+        placeholder="Sales date"
+        autocomplete="off"
+        aria-label="Sales date"
+      />
+      <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">Search</button>
+      <button type="button" class="btn btn-outline-green btn-sm" (click)="onReset()" [disabled]="loading">
+        Reset
+      </button>
+    </form>
+
+    <div class="table-wrap">
+      @if (hasLoaded && totalElements === 0) {
+        <div class="state-block">
+          <span class="text-muted">No sales found.</span>
+          <a routerLink="/sales/create" class="btn btn-green btn-sm">Create first</a>
+        </div>
+      } @else {
+        <div class="app-data-grid" aria-label="Sales list">
+          <ag-grid-angular
+            [theme]="gridTheme"
+            [columnDefs]="columnDefs"
+            [defaultColDef]="defaultColDef"
+            [rowModelType]="'infinite'"
+            [datasource]="dataSource"
+            [pagination]="true"
+            [paginationPageSize]="size"
+            [paginationPageSizeSelector]="false"
+            [paginationNumberFormatter]="paginationNumberFormatter"
+            [cacheBlockSize]="size"
+            [headerHeight]="41"
+            [rowHeight]="41"
+            [animateRows]="false"
+            [suppressCellFocus]="true"
+            [suppressRowHoverHighlight]="false"
+            (gridReady)="onGridReady($event)"
+            (cellClicked)="onCellClicked($event)"
+          />
+        </div>
+      }
+    </div>
+  </div>
+
+  <app-confirm-dialog
+    [open]="!!pendingDelete"
+    [danger]="true"
+    title="Delete sale"
+    [message]="deleteDialogMessage"
+    [detail]="deleteDialogDetail"
+    confirmLabel="Delete"
+    cancelLabel="Cancel"
+    [busy]="!!deletingId"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+</div>

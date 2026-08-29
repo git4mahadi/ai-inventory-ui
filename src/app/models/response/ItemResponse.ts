@@ -17,4 +17,5 @@ export class ItemResponse {
   expireNotifyDays?: number;
   isForeignItem?: boolean;
   enabled?: boolean;
+  currentStock?: number;
 }

@@ -221,13 +221,13 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     children: [
       {
         id: 'sales-list',
-        label: 'Sales list',
+        label: 'Sales List',
         shortLabel: 'LS',
         link: '/sales/list',
       },
       {
         id: 'sales-create',
-        label: 'Create sale',
+        label: 'Sales Create',
         shortLabel: 'CS',
         link: '/sales/create',
       },

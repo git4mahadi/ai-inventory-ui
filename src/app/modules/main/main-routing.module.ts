@@ -18,11 +18,6 @@ const routes: Routes = [
           import('../dashboard/dashboard.module').then((m) => m.DashboardModule),
       },
       {
-        path: 'sales',
-        loadChildren: () =>
-          import('../sales/sales.module').then((m) => m.SalesModule),
-      },
-      {
         path: 'customers',
         loadChildren: () =>
           import('../customers/customers.module').then((m) => m.CustomersModule),
@@ -72,6 +67,11 @@ const routes: Routes = [
         path: 'receives',
         loadChildren: () =>
           import('../receives/receives.module').then((m) => m.ReceivesModule),
+      },
+      {
+        path: 'sales',
+        loadChildren: () =>
+          import('../sales/sales.module').then((m) => m.SalesModule),
       },
     ],
   },

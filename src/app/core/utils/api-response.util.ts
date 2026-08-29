@@ -9,6 +9,7 @@ import { LookupResponse } from '../../models/response/LookupResponse';
 import { OpeningStockResponse } from '../../models/response/OpeningStockResponse';
 import { PurchaseOrderResponse } from '../../models/response/PurchaseOrderResponse';
 import { ReceiveResponse } from '../../models/response/ReceiveResponse';
+import { SalesResponse } from '../../models/response/SalesResponse';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
 
 /** Unwraps `{ data: T }` API envelopes; passes through if already unwrapped. */
@@ -296,6 +297,30 @@ export function normalizeReceive(payload: unknown): ReceiveResponse | null {
 
   if ('data' in value && value['data'] != null) {
     return normalizeReceive(value['data']);
+  }
+
+  return null;
+}
+
+/** Resolves a sales entity from a raw or `{ data: sales }` payload. */
+export function normalizeSales(payload: unknown): SalesResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'invoiceNcId' in value ||
+    'salesDate' in value ||
+    'salesStatus' in value ||
+    'totalAmount' in value
+  ) {
+    return value as SalesResponse;
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeSales(value['data']);
   }
 
   return null;
