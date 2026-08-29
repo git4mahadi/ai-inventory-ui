@@ -5,9 +5,18 @@
         <h1 class="page-title">Sales Edit</h1>
         <span class="toolbar-meta">{{ invoiceNcId || 'Update record' }}{{ statusLabel ? ' · ' + statusLabel : '' }}</span>
       </div>
-      <a routerLink="/sales/list" class="icon-action icon-back" title="Back to list" aria-label="Back to sales list">
-        <span class="icon-graphic" aria-hidden="true"></span>
-      </a>
+      <div class="toolbar-actions">
+        <a
+          [routerLink]="['/sales/slip', salesId]"
+          class="btn btn-outline-green btn-sm"
+          title="Print POS slip"
+        >
+          Print slip
+        </a>
+        <a routerLink="/sales/list" class="icon-action icon-back" title="Back to list" aria-label="Back to sales list">
+          <span class="icon-graphic" aria-hidden="true"></span>
+        </a>
+      </div>
     </div>
 
     @if (loadingRecord) {

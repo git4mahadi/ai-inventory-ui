@@ -60,20 +60,10 @@ export class SalesApiService {
 
   getSalesById(id: string): Observable<SalesResponse> {
     return this.http
-      .post<ApiResponse<SalesResponse[]>>(
-        `${this.baseUrl}/search-list`,
-        new SalesSearchDto({ id }),
-      )
+      .get<ApiResponse<SalesResponse>>(`${this.baseUrl}/${id}`)
       .pipe(
         unwrapApiData(),
-        map((result) => {
-          const record = Array.isArray(result) ? result[0] : undefined;
-          const sales = normalizeSales(record);
-          if (!sales) {
-            throw { error: { message: 'Sale not found' } };
-          }
-          return sales;
-        }),
+        map((result) => this.requireSales(result)),
         catchError((err: { error?: { message?: string } }) => {
           this.toast.error(err?.error?.message || 'Failed to load sale');
           return throwError(() => err);

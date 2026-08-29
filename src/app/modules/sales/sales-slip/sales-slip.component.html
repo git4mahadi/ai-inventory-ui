@@ -1,0 +1,126 @@
+<div class="sales-slip">
+  <div class="slip-toolbar no-print">
+    <div class="toolbar-title">
+      <h1 class="page-title">POS slip</h1>
+      @if (sale?.invoiceNcId) {
+        <span class="toolbar-meta">{{ sale?.invoiceNcId }}</span>
+      }
+    </div>
+    <div class="toolbar-actions">
+      <button
+        type="button"
+        class="btn btn-green btn-sm"
+        (click)="printSlip()"
+        [disabled]="loading || !sale"
+      >
+        Print
+      </button>
+      <a routerLink="/sales/list" class="icon-action icon-back" title="Back to list" aria-label="Back to sales list">
+        <span class="icon-graphic" aria-hidden="true"></span>
+      </a>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="state-block no-print">
+      <div class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></div>
+      <span>Loading slip...</span>
+    </div>
+  } @else if (sale) {
+    <article class="pos-ticket" aria-label="POS sales slip">
+      <header class="ticket-header">
+<!--        <h2 class="store-name">{{ sale.storeName || 'AI Inventory' }}</h2>-->
+        <h2 class="store-name">{{ 'AI Inventory' }}</h2>
+        @if (sale.storeAddress) {
+          <p class="store-line">{{ sale.storeAddress }}</p>
+        }
+        @if (sale.storeMobile) {
+          <p class="store-line">Tel: {{ sale.storeMobile }}</p>
+        }
+        <p class="ticket-badge">SALES RECEIPT</p>
+      </header>
+
+      <section class="ticket-meta">
+        <div class="meta-row">
+          <span>Invoice</span>
+          <strong>{{ sale.invoiceNcId || '—' }}</strong>
+        </div>
+        <div class="meta-row">
+          <span>Date</span>
+          <strong>{{ displayDate(sale.salesDate) }}</strong>
+        </div>
+        <div class="meta-row">
+          <span>Customer</span>
+          <strong>{{ customerLabel }}</strong>
+        </div>
+        <div class="meta-row">
+          <span>Payment</span>
+          <strong>{{ paymentLabel(sale.paymentMethod) }}</strong>
+        </div>
+      </section>
+
+      <table class="ticket-items">
+        <thead>
+          <tr>
+            <th class="col-item">Item</th>
+            <th class="col-qty">Qty</th>
+            <th class="col-rate">Rate</th>
+            <th class="col-amt">Amt</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items; track item.id || item.itemId) {
+            <tr>
+              <td class="col-item">
+                <div class="item-name">{{ item.itemName || 'Item' }}</div>
+                @if (item.itemCode) {
+                  <div class="item-code">{{ item.itemCode }}</div>
+                }
+                @if (item.discountAmount) {
+                  <div class="item-disc">Disc {{ item.discountAmount | bdNumber }}</div>
+                }
+              </td>
+              <td class="col-qty">{{ item.quantity | bdNumber }}</td>
+              <td class="col-rate">{{ item.unitPrice | bdNumber }}</td>
+              <td class="col-amt">{{ item.lineTotal | bdNumber }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <section class="ticket-totals">
+        <div class="total-row">
+          <span>Sub total</span>
+          <strong>{{ sale.subTotal | bdNumber }}</strong>
+        </div>
+        <div class="total-row">
+          <span>Discount</span>
+          <strong>{{ sale.discountAmount | bdNumber }}</strong>
+        </div>
+        @if (sale.taxAmount) {
+          <div class="total-row">
+            <span>Tax</span>
+            <strong>{{ sale.taxAmount | bdNumber }}</strong>
+          </div>
+        }
+        <div class="total-row grand">
+          <span>Grand total</span>
+          <strong>{{ sale.totalAmount | bdNumber }}</strong>
+        </div>
+        <div class="total-row">
+          <span>Paid</span>
+          <strong>{{ sale.paidAmount | bdNumber }}</strong>
+        </div>
+        <div class="total-row">
+          <span>Due</span>
+          <strong>{{ sale.dueAmount | bdNumber }}</strong>
+        </div>
+      </section>
+
+      <footer class="ticket-footer">
+        <p>Thank you for your purchase</p>
+        <p class="ticket-note">Please keep this slip for your records</p>
+      </footer>
+    </article>
+  }
+</div>

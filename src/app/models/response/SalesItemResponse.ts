@@ -4,6 +4,7 @@ export class SalesItemResponse {
   salesId?: string;
   itemId?: string;
   itemName?: string;
+  itemCode?: string;
   quantity?: number;
   unitPrice?: number;
   discountAmount?: number;

@@ -8,6 +8,9 @@ export class SalesResponse {
   salesDateFormatted?: string;
   storeId?: string;
   storeName?: string;
+  storeCode?: string;
+  storeMobile?: string;
+  storeAddress?: string;
   financialYearId?: string;
   fyCode?: string;
   customerId?: string;

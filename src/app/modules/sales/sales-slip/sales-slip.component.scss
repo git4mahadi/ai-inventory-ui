@@ -1,0 +1,329 @@
+.sales-slip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--green-ink);
+}
+
+.slip-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: min(100%, 28rem);
+  padding: 0.55rem 0.75rem;
+  background: #fff;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.85rem;
+  box-shadow: 0 8px 22px rgba(18, 53, 40, 0.05);
+}
+
+.toolbar-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.toolbar-meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green-600);
+  white-space: nowrap;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.icon-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  color: var(--green-700);
+  background: linear-gradient(180deg, #f3faf6 0%, #e7f4ec 100%);
+  border: 1px solid rgba(31, 128, 84, 0.22);
+  text-decoration: none;
+
+  .icon-graphic {
+    display: block;
+    width: 15px;
+    height: 15px;
+    background-color: currentColor;
+    -webkit-mask: url('/assets/svg/icon-back.svg') no-repeat center / contain;
+    mask: url('/assets/svg/icon-back.svg') no-repeat center / contain;
+  }
+}
+
+.state-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 10rem;
+  font-size: 0.82rem;
+  color: #6c757d;
+}
+
+.pos-ticket {
+  width: 80mm;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0.9rem 0.75rem 1.1rem;
+  background: #fff;
+  color: #12261b;
+  border: 1px dashed rgba(31, 128, 84, 0.28);
+  border-radius: 0.35rem;
+  box-shadow: 0 10px 24px rgba(18, 53, 40, 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ticket-header {
+  text-align: center;
+  padding-bottom: 0.65rem;
+
+  &::after {
+    content: '';
+    display: block;
+    width: 100%;
+    margin-top: 0.55rem;
+    border-bottom: 1px dashed #7a9685;
+  }
+}
+
+.store-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.store-line {
+  margin: 0.2rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: #3d5a4a;
+}
+
+.ticket-badge {
+  display: inline-block;
+  margin: 0.55rem 0 0;
+  padding: 0.12rem 0.55rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  border: 1px solid #12261b;
+  border-radius: 999px;
+}
+
+.ticket-meta {
+  padding: 0.55rem 0;
+
+  &::after {
+    content: '';
+    display: block;
+    width: 100%;
+    margin-top: 0.55rem;
+    border-bottom: 1px dashed #7a9685;
+  }
+}
+
+.meta-row,
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.72rem;
+  line-height: 1.5;
+
+  span {
+    flex-shrink: 0;
+    color: #3d5a4a;
+  }
+
+  strong {
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    word-break: break-word;
+  }
+}
+
+.ticket-items {
+  width: 100%;
+  margin: 0.55rem 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+
+  th,
+  td {
+    padding: 0.22rem 0;
+    font-size: 0.7rem;
+    vertical-align: top;
+  }
+
+  th {
+    padding-bottom: 0.35rem;
+    border-bottom: 1px dashed #7a9685;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: #3d5a4a;
+  }
+
+  .col-item {
+    width: 46%;
+    text-align: left;
+    padding-right: 0.25rem;
+  }
+
+  .col-qty {
+    width: 14%;
+    text-align: center;
+  }
+
+  .col-rate,
+  .col-amt {
+    width: 20%;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    padding-left: 0.2rem;
+  }
+}
+
+.item-name {
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.item-code,
+.item-disc {
+  color: #4a6757;
+  font-size: 0.62rem;
+  line-height: 1.35;
+}
+
+.ticket-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.14rem;
+  padding-top: 0.45rem;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 100%;
+    margin-bottom: 0.35rem;
+    border-top: 1px dashed #7a9685;
+  }
+}
+
+.total-row.grand {
+  margin-top: 0.25rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid #12261b;
+  font-size: 0.82rem;
+  font-weight: 800;
+
+  strong {
+    font-size: 0.88rem;
+  }
+}
+
+.ticket-footer {
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  text-align: center;
+  font-size: 0.7rem;
+
+  &::before {
+    content: '— — —';
+    display: block;
+    margin-bottom: 0.45rem;
+    letter-spacing: 0.35em;
+    color: #7a9685;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.ticket-note {
+  margin-top: 0.2rem !important;
+  color: #4a6757;
+  font-size: 0.62rem;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .sales-slip {
+    display: block;
+    width: 80mm;
+    max-width: 80mm;
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  .pos-ticket {
+    width: 72mm;
+    max-width: 72mm;
+    margin: 0 auto;
+    padding: 1.5mm 0 3mm;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    page-break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .store-name {
+    font-size: 11pt;
+  }
+
+  .store-line,
+  .meta-row,
+  .total-row,
+  .ticket-items th,
+  .ticket-items td,
+  .ticket-footer {
+    font-size: 8.5pt;
+  }
+
+  .ticket-badge {
+    font-size: 7.5pt;
+  }
+
+  .total-row.grand {
+    font-size: 9.5pt;
+
+    strong {
+      font-size: 10pt;
+    }
+  }
+}

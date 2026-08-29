@@ -374,7 +374,8 @@ textarea.form-control-sm {
     }
   }
 
-  .icon-edit {
+  .icon-edit,
+  .icon-print {
     color: var(--green-600);
 
     &:hover,
@@ -391,6 +392,39 @@ textarea.form-control-sm {
     &:focus-visible {
       color: #922b21;
       background: rgba(192, 57, 43, 0.1);
+    }
+  }
+}
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 2mm 0;
+  }
+
+  body.pos-slip-open {
+    background: #fff !important;
+
+    .sidebar,
+    .sidebar-backdrop,
+    .topbar,
+    app-footer,
+    .toast-container {
+      display: none !important;
+    }
+
+    .main-shell,
+    .main-content,
+    .page-body,
+    .page-canvas {
+      display: block !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
+      width: 80mm !important;
+      max-width: 80mm !important;
+      min-height: auto !important;
+      background: #fff !important;
+      box-shadow: none !important;
     }
   }
 }

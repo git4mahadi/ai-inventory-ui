@@ -339,8 +339,12 @@ export class SalesCreateComponent implements OnInit, OnDestroy {
       .createSales(this.buildDto())
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
-        next: () => {
+        next: (sale) => {
           this.toastr.success('Sale created successfully');
+          if (sale.id) {
+            void this.router.navigate(['/sales/slip', sale.id], { queryParams: { print: '1' } });
+            return;
+          }
           void this.router.navigate(['/sales/list']);
         },
       });

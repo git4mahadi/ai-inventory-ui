@@ -372,9 +372,9 @@ export class SalesEditComponent implements OnInit, OnDestroy {
       .updateSales(this.salesId, this.buildDto())
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
-        next: () => {
+        next: (sale) => {
           this.toastr.success('Sale updated successfully');
-          void this.router.navigate(['/sales/list']);
+          void this.router.navigate(['/sales/slip', sale.id || this.salesId], { queryParams: { print: '1' } });
         },
       });
   }

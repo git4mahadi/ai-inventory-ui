@@ -38,6 +38,12 @@
   white-space: nowrap;
 }
 
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .icon-action {
   display: inline-flex;
   align-items: center;

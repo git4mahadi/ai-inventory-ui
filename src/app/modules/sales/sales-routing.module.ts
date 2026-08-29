@@ -3,6 +3,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { SalesCreateComponent } from './sales-create/sales-create.component';
 import { SalesEditComponent } from './sales-edit/sales-edit.component';
 import { SalesListComponent } from './sales-list/sales-list.component';
+import { SalesSlipComponent } from './sales-slip/sales-slip.component';
 
 const routes: Routes = [
   {
@@ -21,6 +22,10 @@ const routes: Routes = [
   {
     path: 'edit/:id',
     component: SalesEditComponent,
+  },
+  {
+    path: 'slip/:id',
+    component: SalesSlipComponent,
   },
 ];
 

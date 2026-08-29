@@ -120,9 +120,9 @@ export class SalesListComponent implements OnInit {
     {
       colId: 'actions',
       headerName: 'Actions',
-      width: 102,
-      minWidth: 102,
-      maxWidth: 102,
+      width: 132,
+      minWidth: 132,
+      maxWidth: 132,
       cellClass: 'col-actions',
       sortable: false,
       resizable: false,
@@ -190,6 +190,8 @@ export class SalesListComponent implements OnInit {
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
     if (action === 'edit' && event.data.id) {
       void this.router.navigate(['/sales/edit', event.data.id]);
+    } else if (action === 'print' && event.data.id) {
+      void this.router.navigate(['/sales/slip', event.data.id], { queryParams: { print: '1' } });
     } else if (action === 'delete') {
       this.requestDelete(event.data);
     }
@@ -364,6 +366,9 @@ export class SalesListComponent implements OnInit {
 
     return `
       <div class="row-actions">
+        <button type="button" class="icon-action icon-print" data-action="print" title="Print slip" aria-label="Print POS slip">
+          <img src="/assets/svg/icon-print.svg" alt="" width="14" height="14" aria-hidden="true" />
+        </button>
         <button type="button" class="icon-action icon-edit" data-action="edit" title="Edit" aria-label="Edit sale">
           <img src="/assets/svg/icon-edit.svg" alt="" width="14" height="14" aria-hidden="true" />
         </button>
