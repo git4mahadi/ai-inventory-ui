@@ -19,6 +19,7 @@ export class SalesSlipComponent implements OnInit, OnDestroy {
   loading = true;
   salesId = '';
   private autoPrint = false;
+  private afterPrintHandler: (() => void) | null = null;
 
   constructor(
     private readonly salesApi: SalesApiService,
@@ -54,6 +55,7 @@ export class SalesSlipComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     document.body.classList.remove('pos-slip-open');
+    this.removeAfterPrintListener();
   }
 
   displayDate(value?: string | null): string {
@@ -65,7 +67,21 @@ export class SalesSlipComponent implements OnInit, OnDestroy {
   }
 
   printSlip(): void {
+    this.removeAfterPrintListener();
+    this.afterPrintHandler = () => {
+      this.removeAfterPrintListener();
+      void this.router.navigate(['/sales/create']);
+    };
+    window.addEventListener('afterprint', this.afterPrintHandler);
     window.print();
+  }
+
+  private removeAfterPrintListener(): void {
+    if (!this.afterPrintHandler) {
+      return;
+    }
+    window.removeEventListener('afterprint', this.afterPrintHandler);
+    this.afterPrintHandler = null;
   }
 
   private loadSales(): void {

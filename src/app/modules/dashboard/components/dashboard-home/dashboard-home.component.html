@@ -1,25 +1,162 @@
 <div class="dashboard-home">
   <div class="page-header mb-4">
     <p class="page-eyebrow mb-1">Overview</p>
-    <h1 class="page-title h4 mb-1">Dashboard</h1>
-    <p class="text-muted small mb-0">Sample inventory overview and weekly activity.</p>
+    <h1 class="page-title h4 mb-1">Sales dashboard</h1>
+    <p class="text-muted small mb-0">
+      Sales, collection, due, and stock for the selected store and date range.
+    </p>
   </div>
 
-  <div class="row g-3 mb-4">
+  <form class="filter-bar mb-3" [formGroup]="searchForm" (ngSubmit)="onSearch()">
+    <ng-select
+      class="filter-ng-select"
+      formControlName="storeId"
+      placeholder="Select store"
+      [clearable]="false"
+      [searchable]="true"
+      [loading]="loadingStores"
+      [class.is-invalid]="submitted && f['storeId'].invalid"
+      aria-label="Store"
+    >
+      @for (store of storeOptions; track store.id) {
+        <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+      }
+    </ng-select>
+    <input
+      type="text"
+      class="form-control form-control-sm"
+      formControlName="startDate"
+      bsDatepicker
+      [bsConfig]="datePickerConfig"
+      placeholder="Start date"
+      autocomplete="off"
+      aria-label="Start date"
+      [class.is-invalid]="submitted && f['startDate'].invalid"
+    />
+    <input
+      type="text"
+      class="form-control form-control-sm"
+      formControlName="endDate"
+      bsDatepicker
+      [bsConfig]="datePickerConfig"
+      placeholder="End date"
+      autocomplete="off"
+      aria-label="End date"
+      [class.is-invalid]="submitted && f['endDate'].invalid"
+    />
+    <button type="submit" class="btn btn-green btn-sm" [disabled]="loadingSummary">
+      {{ loadingSummary ? 'Loading...' : 'Search' }}
+    </button>
+    <button
+      type="button"
+      class="btn btn-outline-green btn-sm"
+      (click)="onReset()"
+      [disabled]="loadingSummary"
+    >
+      Reset
+    </button>
+  </form>
+
+  <div class="row g-3 mb-4" [class.summary-cards--loading]="loadingSummary">
     @for (card of summaryCards; track card.label) {
-      <div class="col-6 col-lg-3">
-        <div class="summary-card h-100 p-3 rounded-3">
-          <div class="text-muted small">{{ card.label }}</div>
-          <div class="fs-4 fw-semibold mt-1 page-title">{{ card.value }}</div>
-          <div class="small text-success mt-1">{{ card.change }}</div>
+      <div class="col-6 col-xl-3">
+        <div class="summary-card summary-card--{{ card.tone }} h-100">
+          <div class="summary-card__top">
+            <div class="summary-card__icon summary-card__icon--{{ card.icon }}" aria-hidden="true"></div>
+            <span class="summary-card__label">{{ card.label }}</span>
+          </div>
+          <div class="summary-card__value">{{ card.value }}</div>
+          <div class="summary-card__hint">{{ card.hint }}</div>
         </div>
       </div>
     }
   </div>
 
-  <div class="chart-panel rounded-3 p-3 p-md-4">
-    <div class="chart-wrap">
-      <canvas #inventoryChart aria-label="Weekly inventory activity chart"></canvas>
+  @if (loading) {
+    <div class="dashboard-loading rounded-3">
+      <span class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></span>
+      <span>Loading sales analytics…</span>
     </div>
-  </div>
+  } @else {
+    <div class="row g-3">
+      <div class="col-12 col-xl-8">
+        <section class="chart-panel chart-panel--wide h-100">
+          <div class="chart-panel__header">
+            <div>
+              <h2 class="chart-panel__title">Weekly sales trend</h2>
+              <p class="chart-panel__subtitle">Revenue and invoice count for the last 7 days</p>
+            </div>
+          </div>
+          @if (revenueTrendChart) {
+            <div class="chart-wrap">
+              <apx-chart
+                [series]="revenueTrendChart.series"
+                [chart]="revenueTrendChart.chart"
+                [colors]="revenueTrendChart.colors"
+                [dataLabels]="revenueTrendChart.dataLabels"
+                [stroke]="revenueTrendChart.stroke"
+                [fill]="revenueTrendChart.fill"
+                [grid]="revenueTrendChart.grid"
+                [xaxis]="revenueTrendChart.xaxis"
+                [yaxis]="revenueTrendChart.yaxis"
+                [tooltip]="revenueTrendChart.tooltip"
+                [legend]="revenueTrendChart.legend"
+              ></apx-chart>
+            </div>
+          }
+        </section>
+      </div>
+
+      <div class="col-12 col-xl-4">
+        <section class="chart-panel h-100">
+          <div class="chart-panel__header">
+            <div>
+              <h2 class="chart-panel__title">Payment mix</h2>
+              <p class="chart-panel__subtitle">Revenue share by payment method</p>
+            </div>
+          </div>
+          @if (paymentMixChart) {
+            <div class="chart-wrap chart-wrap--compact">
+              <apx-chart
+                [series]="paymentMixChart.series"
+                [chart]="paymentMixChart.chart"
+                [labels]="paymentMixChart.labels"
+                [colors]="paymentMixChart.colors"
+                [dataLabels]="paymentMixChart.dataLabels"
+                [legend]="paymentMixChart.legend"
+                [plotOptions]="paymentMixChart.plotOptions"
+                [tooltip]="paymentMixChart.tooltip"
+              ></apx-chart>
+            </div>
+          }
+        </section>
+      </div>
+
+      <div class="col-12">
+        <section class="chart-panel">
+          <div class="chart-panel__header">
+            <div>
+              <h2 class="chart-panel__title">Invoice status</h2>
+              <p class="chart-panel__subtitle">Sales volume by status in the last 7 days</p>
+            </div>
+          </div>
+          @if (statusChart) {
+            <div class="chart-wrap chart-wrap--bar">
+              <apx-chart
+                [series]="statusChart.series"
+                [chart]="statusChart.chart"
+                [colors]="statusChart.colors"
+                [plotOptions]="statusChart.plotOptions"
+                [dataLabels]="statusChart.dataLabels"
+                [grid]="statusChart.grid"
+                [xaxis]="statusChart.xaxis"
+                [yaxis]="statusChart.yaxis"
+                [tooltip]="statusChart.tooltip"
+              ></apx-chart>
+            </div>
+          }
+        </section>
+      </div>
+    </div>
+  }
 </div>

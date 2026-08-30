@@ -11,6 +11,7 @@ import { PurchaseOrderResponse } from '../../models/response/PurchaseOrderRespon
 import { ReceiveResponse } from '../../models/response/ReceiveResponse';
 import { ReconcileStockResponse } from '../../models/response/ReconcileStockResponse';
 import { SalesResponse } from '../../models/response/SalesResponse';
+import { SummaryResponseV1 } from '../../models/response/SummaryResponseV1';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
 
 /** Unwraps `{ data: T }` API envelopes; passes through if already unwrapped. */
@@ -347,6 +348,30 @@ export function normalizeSales(payload: unknown): SalesResponse | null {
 
   if ('data' in value && value['data'] != null) {
     return normalizeSales(value['data']);
+  }
+
+  return null;
+}
+
+/** Resolves a dashboard summary v1 payload from a raw or `{ data }` envelope. */
+export function normalizeSummaryV1(payload: unknown): SummaryResponseV1 | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'totalSales' in value ||
+    'totalCollection' in value ||
+    'totalDue' in value ||
+    'totalStock' in value
+  ) {
+    return value as SummaryResponseV1;
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeSummaryV1(value['data']);
   }
 
   return null;
