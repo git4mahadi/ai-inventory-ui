@@ -1,0 +1,103 @@
+<div class="reconcile-stock-list">
+  <div class="list-shell">
+    <div class="list-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Stock Reconcile</h1>
+        @if (hasLoaded) {
+          <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
+        }
+      </div>
+      <a routerLink="/reconcile-stocks/create" class="btn-create" title="Create stock reconcile">
+        <span class="icon-plus" aria-hidden="true"></span>
+        <span class="btn-create-label">Create</span>
+      </a>
+    </div>
+
+    <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="searchTerm"
+        placeholder="Search"
+        aria-label="Search term"
+      />
+      <ng-select
+        class="filter-ng-select"
+        formControlName="storeId"
+        placeholder="All stores"
+        [clearable]="true"
+        [searchable]="true"
+        aria-label="Store"
+      >
+        @for (store of storeOptions; track store.id) {
+          <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+        }
+      </ng-select>
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="reconcileDate"
+        bsDatepicker
+        [bsConfig]="datePickerConfig"
+        placeholder="Reconcile date"
+        autocomplete="off"
+        aria-label="Reconcile date"
+      />
+      <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">Search</button>
+      <button type="button" class="btn btn-outline-green btn-sm" (click)="onReset()" [disabled]="loading">
+        Reset
+      </button>
+    </form>
+
+    <div class="table-wrap">
+      @if (hasLoaded && totalElements === 0) {
+        <div class="state-block">
+          <span class="text-muted">No stock reconciles found.</span>
+          <a routerLink="/reconcile-stocks/create" class="btn btn-green btn-sm">Create first</a>
+        </div>
+      } @else {
+        <div class="app-data-grid" aria-label="Stock reconcile list">
+          <ag-grid-angular
+            [theme]="gridTheme"
+            [columnDefs]="columnDefs"
+            [defaultColDef]="defaultColDef"
+            [rowModelType]="'infinite'"
+            [datasource]="dataSource"
+            [pagination]="true"
+            [paginationPageSize]="size"
+            [paginationPageSizeSelector]="false"
+            [paginationNumberFormatter]="paginationNumberFormatter"
+            [cacheBlockSize]="size"
+            [headerHeight]="41"
+            [rowHeight]="41"
+            [animateRows]="false"
+            [suppressCellFocus]="true"
+            [suppressRowHoverHighlight]="false"
+            (gridReady)="onGridReady($event)"
+            (cellClicked)="onCellClicked($event)"
+          />
+        </div>
+      }
+    </div>
+  </div>
+
+  <app-confirm-dialog
+    [open]="!!pendingDelete"
+    [danger]="true"
+    title="Delete stock reconcile"
+    [message]="deleteDialogMessage"
+    [detail]="deleteDialogDetail"
+    confirmLabel="Delete"
+    cancelLabel="Cancel"
+    [busy]="!!deletingId"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+
+  <app-reconcile-stock-view-dialog
+    [open]="viewOpen"
+    [loading]="viewLoading"
+    [record]="viewRecord"
+    (closed)="closeView()"
+  />
+</div>

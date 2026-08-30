@@ -9,6 +9,7 @@ import { LookupResponse } from '../../models/response/LookupResponse';
 import { OpeningStockResponse } from '../../models/response/OpeningStockResponse';
 import { PurchaseOrderResponse } from '../../models/response/PurchaseOrderResponse';
 import { ReceiveResponse } from '../../models/response/ReceiveResponse';
+import { ReconcileStockResponse } from '../../models/response/ReconcileStockResponse';
 import { SalesResponse } from '../../models/response/SalesResponse';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
 
@@ -297,6 +298,31 @@ export function normalizeReceive(payload: unknown): ReceiveResponse | null {
 
   if ('data' in value && value['data'] != null) {
     return normalizeReceive(value['data']);
+  }
+
+  return null;
+}
+
+/** Resolves a reconcile stock entity from a raw or `{ data: reconcileStock }` payload. */
+export function normalizeReconcileStock(
+  payload: unknown,
+): ReconcileStockResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'reconcileStockNcId' in value ||
+    'reconcileDate' in value ||
+    ('storeId' in value && 'items' in value)
+  ) {
+    return value as ReconcileStockResponse;
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeReconcileStock(value['data']);
   }
 
   return null;

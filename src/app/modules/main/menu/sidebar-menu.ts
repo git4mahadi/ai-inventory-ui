@@ -233,6 +233,26 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
       },
     ],
   },
+  {
+    id: 'reconcile-stocks',
+    label: 'Stock Reconcile',
+    shortLabel: 'SR',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'reconcile-stocks-list',
+        label: 'Reconcile List',
+        shortLabel: 'RS',
+        link: '/reconcile-stocks/list',
+      },
+      {
+        id: 'reconcile-stocks-create',
+        label: 'Reconcile Create',
+        shortLabel: 'CR',
+        link: '/reconcile-stocks/create',
+      },
+    ],
+  },
 ];
 
 /** Collect all ancestor ids that contain a matching link. */

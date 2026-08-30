@@ -73,6 +73,13 @@ const routes: Routes = [
         loadChildren: () =>
           import('../sales/sales.module').then((m) => m.SalesModule),
       },
+      {
+        path: 'reconcile-stocks',
+        loadChildren: () =>
+          import('../reconcile-stocks/reconcile-stocks.module').then(
+            (m) => m.ReconcileStocksModule,
+          ),
+      },
     ],
   },
 ];

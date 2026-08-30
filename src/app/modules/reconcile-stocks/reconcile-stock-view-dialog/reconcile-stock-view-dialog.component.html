@@ -1,0 +1,92 @@
+@if (open) {
+  <div class="view-backdrop" role="presentation" (click)="onBackdropClick($event)">
+    <div
+      class="view-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reconcile-view-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="view-header">
+        <div>
+          <h2 id="reconcile-view-title" class="view-title">Stock reconcile details</h2>
+          @if (record?.reconcileStockNcId) {
+            <p class="view-subtitle">{{ record?.reconcileStockNcId }}</p>
+          }
+        </div>
+        <button
+          type="button"
+          class="view-close"
+          title="Close"
+          aria-label="Close"
+          [disabled]="loading"
+          (click)="onClose()"
+        >
+          ×
+        </button>
+      </div>
+
+      @if (loading) {
+        <div class="view-state">
+          <div class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></div>
+          <span>Loading details...</span>
+        </div>
+      } @else if (record) {
+        <div class="view-meta">
+          <div class="meta-row">
+            <span>Date</span>
+            <strong>{{ record.reconcileDateFormatted || displayDate(record.reconcileDate) }}</strong>
+          </div>
+          <div class="meta-row">
+            <span>Store</span>
+            <strong>{{ record.storeName || '—' }}</strong>
+          </div>
+        </div>
+
+        @if (items.length === 0) {
+          <div class="view-empty">No line items.</div>
+        } @else {
+          <div class="view-table-wrap">
+            <table class="view-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Type</th>
+                  <th>Qty</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of items; track item.id || item.itemId) {
+                  <tr>
+                    <td class="col-item">{{ item.itemName || '—' }}</td>
+                    <td class="col-type">{{ typeLabel(item) }}</td>
+                    <td class="col-qty">{{ item.reconcileQty | bdNumber }}</td>
+                    <td class="col-remarks">{{ item.remarks || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <div class="view-totals">
+          <div class="totals-row write-on">
+            <span>Write On qty</span>
+            <strong>{{ writeOnQty | bdNumber }}</strong>
+          </div>
+          <div class="totals-row write-off">
+            <span>Write Off qty</span>
+            <strong>{{ writeOffQty | bdNumber }}</strong>
+          </div>
+        </div>
+      }
+
+      <div class="view-actions">
+        <button type="button" class="btn-close-dialog" [disabled]="loading" (click)="onClose()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+}

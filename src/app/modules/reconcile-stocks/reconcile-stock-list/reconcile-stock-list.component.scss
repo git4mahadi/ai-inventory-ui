@@ -1,0 +1,185 @@
+.reconcile-stock-list {
+  .page-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--green-ink);
+  }
+}
+
+.list-shell {
+  background: #fff;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.85rem;
+  box-shadow: 0 8px 22px rgba(18, 53, 40, 0.05);
+  overflow: hidden;
+}
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid rgba(18, 53, 40, 0.07);
+  background: linear-gradient(180deg, #f7fbf8 0%, #fff 100%);
+}
+
+.toolbar-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.toolbar-meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green-600);
+  white-space: nowrap;
+}
+
+.btn-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.45rem;
+  border-radius: 999px;
+  border: 0;
+  text-decoration: none;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  background: linear-gradient(135deg, #176643 0%, #1f8054 50%, #2a9d6a 100%);
+  box-shadow: 0 6px 14px rgba(31, 128, 84, 0.28);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+
+  .icon-plus {
+    display: inline-flex;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    position: relative;
+    flex-shrink: 0;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 12px;
+      height: 12px;
+      background-color: currentColor;
+      -webkit-mask: url('/assets/svg/icon-plus.svg') no-repeat center / contain;
+      mask: url('/assets/svg/icon-plus.svg') no-repeat center / contain;
+    }
+  }
+
+  .btn-create-label {
+    padding-right: 0.1rem;
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: #fff;
+    filter: brightness(1.05);
+    box-shadow: 0 10px 20px rgba(31, 128, 84, 0.34);
+    transform: translateY(-1px);
+    outline: none;
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(31, 128, 84, 0.24);
+  }
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: 1.2fr 1.3fr 0.95fr auto auto;
+  gap: 0.4rem;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid rgba(18, 53, 40, 0.07);
+  background: rgba(241, 248, 244, 0.35);
+
+  .form-control-sm {
+    min-height: 1.85rem;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.78rem;
+  }
+
+  .filter-ng-select {
+    font-size: 0.78rem;
+
+    ::ng-deep .ng-select-container {
+      min-height: 1.85rem;
+      height: 1.85rem;
+      border-color: rgba(31, 128, 84, 0.22);
+      border-radius: 0.25rem;
+    }
+
+    ::ng-deep .ng-dropdown-panel {
+      border-color: rgba(31, 128, 84, 0.22);
+      font-size: 0.78rem;
+    }
+
+    ::ng-deep .ng-value,
+    ::ng-deep .ng-placeholder,
+    ::ng-deep .ng-option {
+      font-size: 0.78rem;
+    }
+
+    &.ng-select.ng-select-focused ::ng-deep .ng-select-container {
+      border-color: var(--green-500);
+      box-shadow: 0 0 0 0.2rem rgba(42, 157, 106, 0.18);
+    }
+  }
+
+  .btn-sm {
+    padding: 0.2rem 0.55rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+}
+
+.table-wrap {
+  --table-row-h: 2.55rem;
+  --table-head-h: 2.55rem;
+  --table-page-size: 10;
+}
+
+.state-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: calc(var(--table-head-h) + (var(--table-row-h) * var(--table-page-size)));
+  padding: 2rem 1rem;
+  font-size: 0.82rem;
+  color: #6c757d;
+}
+
+@media (max-width: 1199.98px) {
+  .filter-bar {
+    grid-template-columns: 1fr 1fr 1fr;
+
+    .btn {
+      width: 100%;
+    }
+  }
+}
+
+@media (max-width: 575.98px) {
+  .filter-bar {
+    grid-template-columns: 1fr;
+  }
+}

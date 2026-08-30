@@ -385,6 +385,26 @@ textarea.form-control-sm {
     }
   }
 
+  .icon-view {
+    color: #1a7a8c;
+
+    .icon-graphic {
+      display: block;
+      width: 14px;
+      height: 14px;
+      background-color: currentColor;
+      -webkit-mask: url('/assets/svg/icon-view.svg') no-repeat center / contain;
+      mask: url('/assets/svg/icon-view.svg') no-repeat center / contain;
+    }
+
+    &:hover,
+    &:focus-visible {
+      color: #135f6e;
+      background: rgba(26, 122, 140, 0.14);
+      box-shadow: inset 0 0 0 1px rgba(26, 122, 140, 0.18);
+    }
+  }
+
   .icon-delete {
     color: #c0392b;
 
