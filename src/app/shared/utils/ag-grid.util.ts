@@ -1,4 +1,23 @@
-import { ColDef, themeQuartz } from 'ag-grid-community';
+import {
+  AllCommunityModule,
+  ColDef,
+  ModuleRegistry,
+  themeQuartz,
+} from 'ag-grid-community';
+
+/** Pass to `[modules]` on `ag-grid-angular` so modules register on the grid instance. */
+export const appGridModules = [AllCommunityModule];
+
+let agGridModulesRegistered = false;
+
+/** Register AG Grid modules globally (backup for grids without `[modules]`). */
+export function registerAgGridModules(): void {
+  if (agGridModulesRegistered) {
+    return;
+  }
+  ModuleRegistry.registerModules(appGridModules);
+  agGridModulesRegistered = true;
+}
 
 export const appGridTheme = themeQuartz.withParams({
   accentColor: '#2a9d6a',

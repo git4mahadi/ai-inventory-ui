@@ -62,6 +62,7 @@
       } @else {
         <div class="app-data-grid" aria-label="Supplier list">
           <ag-grid-angular
+            [modules]="gridModules"
             [theme]="gridTheme"
             [columnDefs]="columnDefs"
             [defaultColDef]="defaultColDef"

@@ -1,16 +1,12 @@
-<div class="sales-list">
+<div class="invoice-list">
   <div class="list-shell">
     <div class="list-toolbar">
       <div class="toolbar-title">
-        <h1 class="page-title">Sales</h1>
+        <h1 class="page-title">Invoices</h1>
         @if (hasLoaded) {
           <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
         }
       </div>
-      <a routerLink="/sales/create" class="btn-create" title="Create sale">
-        <span class="icon-plus" aria-hidden="true"></span>
-        <span class="btn-create-label">Create</span>
-      </a>
     </div>
 
     <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
@@ -20,6 +16,13 @@
         formControlName="searchTerm"
         placeholder="Search"
         aria-label="Search term"
+      />
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="invoiceNcId"
+        placeholder="Invoice no"
+        aria-label="Invoice number"
       />
       <ng-select
         class="filter-ng-select"
@@ -49,28 +52,6 @@
           <ng-option [value]="customer.id">{{ customerLabel(customer) }}</ng-option>
         }
       </ng-select>
-      <ng-select
-        class="filter-ng-select"
-        formControlName="salesStatus"
-        placeholder="All statuses"
-        [clearable]="true"
-        [searchable]="true"
-        aria-label="Status"
-      >
-        @for (status of statusOptions; track status) {
-          <ng-option [value]="status">{{ statusLabel(status) }}</ng-option>
-        }
-      </ng-select>
-      <input
-        type="text"
-        class="form-control form-control-sm"
-        formControlName="salesDate"
-        bsDatepicker
-        [bsConfig]="datePickerConfig"
-        placeholder="Sales date"
-        autocomplete="off"
-        aria-label="Sales date"
-      />
       <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">Search</button>
       <button type="button" class="btn btn-outline-green btn-sm" (click)="onReset()" [disabled]="loading">
         Reset
@@ -80,11 +61,10 @@
     <div class="table-wrap">
       @if (hasLoaded && totalElements === 0) {
         <div class="state-block">
-          <span class="text-muted">No sales found.</span>
-          <a routerLink="/sales/create" class="btn btn-green btn-sm">Create first</a>
+          <span class="text-muted">No invoices found.</span>
         </div>
       } @else {
-        <div class="app-data-grid" aria-label="Sales list">
+        <div class="app-data-grid" aria-label="Invoice list">
           <ag-grid-angular
             [modules]="gridModules"
             [theme]="gridTheme"
@@ -103,23 +83,9 @@
             [suppressCellFocus]="true"
             [suppressRowHoverHighlight]="false"
             (gridReady)="onGridReady($event)"
-            (cellClicked)="onCellClicked($event)"
           />
         </div>
       }
     </div>
   </div>
-
-  <app-confirm-dialog
-    [open]="!!pendingDelete"
-    [danger]="true"
-    title="Delete sale"
-    [message]="deleteDialogMessage"
-    [detail]="deleteDialogDetail"
-    confirmLabel="Delete"
-    cancelLabel="Cancel"
-    [busy]="!!deletingId"
-    (confirmed)="confirmDelete()"
-    (cancelled)="cancelDelete()"
-  />
 </div>

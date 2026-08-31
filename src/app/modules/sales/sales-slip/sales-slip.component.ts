@@ -1,7 +1,8 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewChecked, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { finalize } from 'rxjs';
+import { renderBarcode } from '../../../core/utils/barcode.util';
 import { toDisplayDate } from '../../../core/utils/date.util';
 import { paymentMethodLabel } from '../../../models/enums/SalesStatus';
 import { SalesItemResponse } from '../../../models/response/SalesItemResponse';
@@ -14,12 +15,15 @@ import { SalesApiService } from '../../../services/SalesApiService';
   templateUrl: './sales-slip.component.html',
   styleUrl: './sales-slip.component.scss',
 })
-export class SalesSlipComponent implements OnInit, OnDestroy {
+export class SalesSlipComponent implements OnInit, OnDestroy, AfterViewChecked {
+  @ViewChild('invoiceBarcode') invoiceBarcode?: ElementRef<SVGElement>;
+
   sale: SalesResponse | null = null;
   loading = true;
   salesId = '';
   private autoPrint = false;
   private afterPrintHandler: (() => void) | null = null;
+  private barcodeRenderedFor: string | null = null;
 
   constructor(
     private readonly salesApi: SalesApiService,
@@ -56,6 +60,10 @@ export class SalesSlipComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     document.body.classList.remove('pos-slip-open');
     this.removeAfterPrintListener();
+  }
+
+  ngAfterViewChecked(): void {
+    this.renderInvoiceBarcode();
   }
 
   displayDate(value?: string | null): string {
@@ -109,5 +117,15 @@ export class SalesSlipComponent implements OnInit, OnDestroy {
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
+  }
+
+  private renderInvoiceBarcode(): void {
+    const invoiceNo = this.sale?.invoiceNcId?.trim();
+    if (!invoiceNo || !this.invoiceBarcode || this.barcodeRenderedFor === invoiceNo) {
+      return;
+    }
+
+    renderBarcode(this.invoiceBarcode.nativeElement, invoiceNo);
+    this.barcodeRenderedFor = invoiceNo;
   }
 }

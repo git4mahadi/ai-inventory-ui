@@ -45,6 +45,11 @@
           <span>Invoice</span>
           <strong>{{ sale.invoiceNcId || '—' }}</strong>
         </div>
+        @if (sale.invoiceNcId) {
+          <div class="ticket-barcode" aria-label="Invoice barcode">
+            <svg #invoiceBarcode role="img" [attr.aria-label]="'Barcode for invoice ' + sale.invoiceNcId"></svg>
+          </div>
+        }
         <div class="meta-row">
           <span>Date</span>
           <strong>{{ displayDate(sale.salesDate) }}</strong>

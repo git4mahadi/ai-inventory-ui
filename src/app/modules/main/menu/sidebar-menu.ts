@@ -231,6 +231,12 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         shortLabel: 'CS',
         link: '/sales/create',
       },
+      {
+        id: 'sales-invoices',
+        label: 'Invoices',
+        shortLabel: 'IN',
+        link: '/sales/invoices',
+      },
     ],
   },
   {

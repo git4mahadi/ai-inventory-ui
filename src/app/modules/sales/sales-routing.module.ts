@@ -4,6 +4,7 @@ import { SalesCreateComponent } from './sales-create/sales-create.component';
 import { SalesEditComponent } from './sales-edit/sales-edit.component';
 import { SalesListComponent } from './sales-list/sales-list.component';
 import { SalesSlipComponent } from './sales-slip/sales-slip.component';
+import { InvoiceListComponent } from './invoice-list/invoice-list.component';
 
 const routes: Routes = [
   {
@@ -26,6 +27,10 @@ const routes: Routes = [
   {
     path: 'slip/:id',
     component: SalesSlipComponent,
+  },
+  {
+    path: 'invoices',
+    component: InvoiceListComponent,
   },
 ];
 

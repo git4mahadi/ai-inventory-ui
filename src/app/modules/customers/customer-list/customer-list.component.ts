@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import {
-  AllCommunityModule,
   CellClickedEvent,
   ColDef,
   GridApi,
@@ -12,7 +11,6 @@ import {
   ICellRendererParams,
   IDatasource,
   IGetRowsParams,
-  ModuleRegistry,
   PaginationNumberFormatterParams,
   themeQuartz,
 } from 'ag-grid-community';
@@ -21,8 +19,7 @@ import { normalizePage } from '../../../core/utils/api-response.util';
 import { CustomerResponse } from '../../../models/response/CustomerResponse';
 import { CustomerSearchDto } from '../../../models/search/CustomerSearchDto';
 import { CustomerApiService } from '../../../services/CustomerApiService';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { appGridModules } from '../../../shared/utils/ag-grid.util';
 
 @Component({
   selector: 'app-customer-list',
@@ -110,6 +107,7 @@ export class CustomerListComponent implements OnInit {
     rowBorder: { color: 'rgba(18, 53, 40, 0.05)' },
     rowHoverColor: 'rgba(42, 157, 106, 0.07)',
   });
+  readonly gridModules = appGridModules;
   readonly dataSource: IDatasource = {
     getRows: (params) => this.getCustomerRows(params),
   };

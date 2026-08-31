@@ -33,6 +33,7 @@
       } @else {
         <div class="app-data-grid customer-grid" aria-label="Customer list">
           <ag-grid-angular
+            [modules]="gridModules"
             [theme]="gridTheme"
             [columnDefs]="columnDefs"
             [defaultColDef]="defaultColDef"

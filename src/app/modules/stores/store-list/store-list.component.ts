@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import {
-  AllCommunityModule,
   CellClickedEvent,
   ColDef,
   GridApi,
@@ -12,7 +11,6 @@ import {
   ICellRendererParams,
   IDatasource,
   IGetRowsParams,
-  ModuleRegistry,
   PaginationNumberFormatterParams,
 } from 'ag-grid-community';
 import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
@@ -22,10 +20,9 @@ import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
 import { StoreApiService } from '../../../services/StoreApiService';
 import {
   appGridDefaultColDef,
+  appGridModules,
   appGridTheme,
 } from '../../../shared/utils/ag-grid.util';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
 
 @Component({
   selector: 'app-store-list',
@@ -103,6 +100,7 @@ export class StoreListComponent implements OnInit {
   ];
   readonly defaultColDef = appGridDefaultColDef;
   readonly gridTheme = appGridTheme;
+  readonly gridModules = appGridModules;
   readonly dataSource: IDatasource = {
     getRows: (params) => this.getStoreRows(params),
   };

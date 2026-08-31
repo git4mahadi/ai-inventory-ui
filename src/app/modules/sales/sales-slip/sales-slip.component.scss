@@ -168,6 +168,19 @@
   }
 }
 
+.ticket-barcode {
+  display: flex;
+  justify-content: center;
+  margin: 0.45rem 0 0.2rem;
+
+  svg {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+  }
+}
+
 .ticket-items {
   width: 100%;
   margin: 0.55rem 0;

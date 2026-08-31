@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import {
-  AllCommunityModule,
   CellClickedEvent,
   ColDef,
   GridApi,
@@ -12,7 +11,6 @@ import {
   ICellRendererParams,
   IDatasource,
   IGetRowsParams,
-  ModuleRegistry,
   PaginationNumberFormatterParams,
   themeQuartz,
 } from 'ag-grid-community';
@@ -21,9 +19,7 @@ import { normalizePage } from '../../../core/utils/api-response.util';
 import { ItemResponse } from '../../../models/response/ItemResponse';
 import { ItemSearchDto } from '../../../models/search/ItemSearchDto';
 import { ItemApiService } from '../../../services/ItemApiService';
-import { appGridDefaultColDef, appGridTheme } from '../../../shared/utils/ag-grid.util';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../shared/utils/ag-grid.util';
 
 @Component({
   selector: 'app-item-list',
@@ -116,6 +112,7 @@ export class ItemListComponent implements OnInit {
   ];
   readonly defaultColDef = appGridDefaultColDef;
   readonly gridTheme = appGridTheme;
+  readonly gridModules = appGridModules;
   readonly dataSource: IDatasource = {
     getRows: (params) => this.getItemRows(params),
   };

@@ -4,7 +4,6 @@ import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import {
-  AllCommunityModule,
   CellClickedEvent,
   ColDef,
   GridApi,
@@ -12,7 +11,6 @@ import {
   ICellRendererParams,
   IDatasource,
   IGetRowsParams,
-  ModuleRegistry,
   PaginationNumberFormatterParams,
 } from 'ag-grid-community';
 import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
@@ -24,9 +22,7 @@ import { ReconcileStockSearchDto } from '../../../models/search/ReconcileStockSe
 import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
 import { ReconcileStockApiService } from '../../../services/ReconcileStockApiService';
 import { StoreApiService } from '../../../services/StoreApiService';
-import { appGridDefaultColDef, appGridTheme } from '../../../shared/utils/ag-grid.util';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../shared/utils/ag-grid.util';
 
 @Component({
   selector: 'app-reconcile-stock-list',
@@ -90,6 +86,7 @@ export class ReconcileStockListComponent implements OnInit {
   ];
   readonly defaultColDef = appGridDefaultColDef;
   readonly gridTheme = appGridTheme;
+  readonly gridModules = appGridModules;
   readonly dataSource: IDatasource = {
     getRows: (params) => this.getReconcileRows(params),
   };

@@ -5,7 +5,6 @@ import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import {
-  AllCommunityModule,
   CellClickedEvent,
   ColDef,
   GridApi,
@@ -13,7 +12,6 @@ import {
   ICellRendererParams,
   IDatasource,
   IGetRowsParams,
-  ModuleRegistry,
   PaginationNumberFormatterParams,
 } from 'ag-grid-community';
 import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
@@ -28,9 +26,7 @@ import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
 import { FinancialYearApiService } from '../../../services/FinancialYearApiService';
 import { OpeningStockApiService } from '../../../services/OpeningStockApiService';
 import { StoreApiService } from '../../../services/StoreApiService';
-import { appGridDefaultColDef, appGridTheme } from '../../../shared/utils/ag-grid.util';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../shared/utils/ag-grid.util';
 
 @Component({
   selector: 'app-opening-stock-list',
@@ -103,6 +99,7 @@ export class OpeningStockListComponent implements OnInit {
   ];
   readonly defaultColDef = appGridDefaultColDef;
   readonly gridTheme = appGridTheme;
+  readonly gridModules = appGridModules;
   readonly dataSource: IDatasource = {
     getRows: (params) => this.getOpeningStockRows(params),
   };

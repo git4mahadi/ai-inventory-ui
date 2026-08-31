@@ -23,17 +23,13 @@ import { ItemApiService } from '../../../services/ItemApiService';
 import { StockApiService } from '../../../services/StockApiService';
 import { StoreApiService } from '../../../services/StoreApiService';
 import {
-  AllCommunityModule,
   ColDef,
   IDatasource,
   IGetRowsParams,
   GridReadyEvent,
-  ModuleRegistry,
   PaginationNumberFormatterParams,
 } from 'ag-grid-community';
-import { appGridDefaultColDef, appGridTheme } from '../../../shared/utils/ag-grid.util';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../shared/utils/ag-grid.util';
 
 @Component({
   selector: 'app-stock-list',
@@ -94,6 +90,7 @@ export class StockListComponent implements OnInit, OnDestroy {
   ];
   readonly defaultColDef = appGridDefaultColDef;
   readonly gridTheme = appGridTheme;
+  readonly gridModules = appGridModules;
   readonly dataSource: IDatasource = {
     getRows: (params) => this.getStockRows(params),
   };
@@ -143,6 +140,9 @@ export class StockListComponent implements OnInit, OnDestroy {
 
   onGridReady(event: GridReadyEvent<StockMainResponse>): void {
     this.gridApi = event.api;
+    if (this.loading) {
+      event.api.setGridOption('datasource', this.dataSource);
+    }
   }
 
   storeLabel(store: StoreResponse): string {
@@ -216,7 +216,11 @@ export class StockListComponent implements OnInit, OnDestroy {
     this.stocks = [];
     this.totalElements = 0;
     this.totalPages = 0;
-    this.gridApi?.setGridOption('datasource', this.dataSource);
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.refreshInfiniteCache();
+      return;
+    }
+    this.gridApi = undefined;
   }
 
   private loadStores(): void {
