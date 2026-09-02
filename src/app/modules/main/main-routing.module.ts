@@ -80,6 +80,11 @@ const routes: Routes = [
             (m) => m.ReconcileStocksModule,
           ),
       },
+      {
+        path: 'reports',
+        loadChildren: () =>
+          import('../reports/reports.module').then((m) => m.ReportsModule),
+      },
     ],
   },
 ];

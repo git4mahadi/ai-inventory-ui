@@ -171,6 +171,32 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     ],
   },
   {
+    id: 'reports',
+    label: 'Report',
+    shortLabel: 'RP',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'reports-current-stock',
+        label: 'Current Stock',
+        shortLabel: 'CS',
+        link: '/reports/current-stock',
+      },
+      {
+        id: 'reports-expired-stock',
+        label: 'Expired Stock',
+        shortLabel: 'ES',
+        link: '/reports/expired-stock',
+      },
+      {
+        id: 'reports-income-statement',
+        label: 'Income Statement',
+        shortLabel: 'IS',
+        link: '/reports/income-statement',
+      },
+    ],
+  },
+  {
     id: 'stores',
     label: 'Stores',
     shortLabel: 'ST',

@@ -1,0 +1,136 @@
+<div class="income-statement-report">
+  <div class="form-shell no-print">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Income Statement</h1>
+        <span class="toolbar-meta">Invoice-wise sales, collection, due, and returns</span>
+      </div>
+    </div>
+
+    <form class="filter-bar" [formGroup]="filterForm" (ngSubmit)="generate()">
+      <ng-select
+        class="filter-ng-select"
+        formControlName="storeId"
+        placeholder="Select store"
+        [clearable]="false"
+        [searchable]="true"
+        [loading]="loadingStores"
+        aria-label="Store"
+      >
+        @for (store of storeOptions; track store.id) {
+          <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+        }
+      </ng-select>
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="startDate"
+        bsDatepicker
+        [bsConfig]="datePickerConfig"
+        placeholder="Start date"
+        autocomplete="off"
+        aria-label="Start date"
+      />
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="endDate"
+        bsDatepicker
+        [bsConfig]="datePickerConfig"
+        placeholder="End date"
+        autocomplete="off"
+        aria-label="End date"
+      />
+      <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">
+        {{ loading ? 'Loading...' : 'Generate' }}
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline-green btn-sm"
+        [disabled]="!hasLoaded || loading"
+        (click)="printReport()"
+      >
+        Print
+      </button>
+    </form>
+  </div>
+
+  @if (!hasLoaded) {
+    <div class="empty-hint no-print">Select store, start date, and end date, then click Generate.</div>
+  } @else {
+    <section class="report-paper" aria-label="Income statement report">
+      <header class="report-header">
+        <h2 class="report-title">Income Statement</h2>
+        <div class="report-meta">
+          <span><strong>Store:</strong> {{ storeName || '—' }}</span>
+          <span><strong>Printed on:</strong> {{ printedOn || '—' }}</span>
+        </div>
+        <div class="report-meta">
+          <span><strong>From:</strong> {{ startDateLabel || '—' }}</span>
+          <span><strong>To:</strong> {{ endDateLabel || '—' }}</span>
+        </div>
+      </header>
+
+      @if (!rows.length) {
+        <div class="empty-hint">No invoices found for these filters.</div>
+      } @else {
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th class="col-sl">SL</th>
+              <th>Invoice</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th class="col-num">Sales</th>
+              <th class="col-num">Collection</th>
+              <th class="col-num">Due</th>
+              <th class="col-num">Return</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of lines; track $index) {
+              @if (line.kind === 'row') {
+                <tr [class.is-return]="isReturnRow(line.data)">
+                  <td class="col-sl">{{ line.sl }}</td>
+                  <td>{{ line.data.invoiceNcId || '—' }}</td>
+                  <td>{{ displayDate(line.data.invoiceDate) }}</td>
+                  <td class="col-name">{{ line.data.customerName || 'Walk-in' }}</td>
+                  <td class="col-num">{{ line.data.totalSales | bdNumber }}</td>
+                  <td class="col-num">{{ line.data.totalCollection | bdNumber }}</td>
+                  <td class="col-num">{{ line.data.totalDue | bdNumber }}</td>
+                  <td class="col-num">{{ line.data.totalReturn | bdNumber }}</td>
+                </tr>
+              } @else {
+                <tr class="is-subtotal">
+                  <td colspan="4" class="col-total-label">
+                    Subtotal {{ displayDate(line.date) }}
+                  </td>
+                  <td class="col-num">{{ line.totals.totalSales | bdNumber }}</td>
+                  <td class="col-num">{{ line.totals.totalCollection | bdNumber }}</td>
+                  <td class="col-num">{{ line.totals.totalDue | bdNumber }}</td>
+                  <td class="col-num">{{ line.totals.totalReturn | bdNumber }}</td>
+                </tr>
+              }
+            }
+          </tbody>
+          <tfoot>
+            <tr class="is-grand">
+              <td colspan="4" class="col-total-label">Grand total</td>
+              <td class="col-num">{{ grandTotal.totalSales | bdNumber }}</td>
+              <td class="col-num">{{ grandTotal.totalCollection | bdNumber }}</td>
+              <td class="col-num">{{ grandTotal.totalDue | bdNumber }}</td>
+              <td class="col-num">{{ grandTotal.totalReturn | bdNumber }}</td>
+            </tr>
+            <tr class="is-net">
+              <td colspan="4" class="col-total-label">Net Collection</td>
+              <td></td>
+              <td class="col-num">{{ netCollection | bdNumber }}</td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      }
+    </section>
+  }
+</div>

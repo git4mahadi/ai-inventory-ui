@@ -1,0 +1,95 @@
+<div class="current-stock-report">
+  <div class="form-shell no-print">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Current Stock</h1>
+        <span class="toolbar-meta">Item-wise stock report</span>
+      </div>
+    </div>
+
+    <form class="filter-bar" [formGroup]="filterForm" (ngSubmit)="generate()">
+      <ng-select
+        class="filter-ng-select"
+        formControlName="storeId"
+        placeholder="Select store"
+        [clearable]="false"
+        [searchable]="true"
+        [loading]="loadingStores"
+        aria-label="Store"
+      >
+        @for (store of storeOptions; track store.id) {
+          <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+        }
+      </ng-select>
+      <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">
+        {{ loading ? 'Loading...' : 'Generate' }}
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline-green btn-sm"
+        [disabled]="!hasLoaded || loading"
+        (click)="printReport()"
+      >
+        Print
+      </button>
+    </form>
+  </div>
+
+  @if (!hasLoaded) {
+    <div class="empty-hint no-print">Select a store and click Generate to view current stock.</div>
+  } @else {
+    <section class="report-paper" aria-label="Current stock report">
+      <header class="report-header">
+        <h2 class="report-title">Current Stock Report</h2>
+        <div class="report-meta">
+          <span><strong>Store:</strong> {{ storeName || '—' }}</span>
+          <span><strong>Printed on:</strong> {{ printedOn || '—' }}</span>
+        </div>
+      </header>
+
+      @if (!rows.length) {
+        <div class="empty-hint">No stock records found for this store.</div>
+      } @else {
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th class="col-sl">SL</th>
+              <th>Code</th>
+              <th>Item name</th>
+              <th>Barcode</th>
+              <th>Pack</th>
+              <th class="col-num">Qty</th>
+              <th class="col-num">Purchase</th>
+              <th class="col-num">Sales</th>
+              <th class="col-num">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row.itemId; let index = $index) {
+              <tr>
+                <td class="col-sl">{{ index + 1 }}</td>
+                <td>{{ row.itemCode || '—' }}</td>
+                <td class="col-name">{{ row.itemName || '—' }}</td>
+                <td>{{ row.itemBarcode || '—' }}</td>
+                <td>{{ row.packSizeName || '—' }}</td>
+                <td class="col-num">{{ row.currentStock | bdNumber }}</td>
+                <td class="col-num">{{ row.purchaseRate | bdNumber }}</td>
+                <td class="col-num">{{ row.salesRate | bdNumber }}</td>
+                <td class="col-num">{{ row.stockValue | bdNumber }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" class="col-total-label">Total</td>
+              <td class="col-num">{{ totalQty | bdNumber }}</td>
+              <td></td>
+              <td></td>
+              <td class="col-num">{{ totalValue | bdNumber }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      }
+    </section>
+  }
+</div>

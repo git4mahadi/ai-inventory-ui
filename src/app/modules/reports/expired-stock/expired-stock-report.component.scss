@@ -1,0 +1,200 @@
+.expired-stock-report {
+  max-width: 1100px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--green-ink);
+}
+
+.form-shell {
+  background: #fff;
+  border: 1px solid var(--panel-border);
+  border-left: 4px solid var(--green-500);
+  border-radius: 0.85rem;
+  box-shadow: 0 8px 22px rgba(18, 53, 40, 0.05);
+  overflow: hidden;
+}
+
+.form-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid rgba(18, 53, 40, 0.07);
+  background: linear-gradient(180deg, #f7fbf8 0%, #fff 100%);
+}
+
+.toolbar-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.toolbar-meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green-600);
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.1fr) minmax(12rem, 1.3fr) 8.5rem auto auto;
+  gap: 0.45rem;
+  padding: 0.65rem 0.85rem;
+  align-items: center;
+
+  .form-control-sm {
+    min-height: 1.85rem;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.78rem;
+  }
+
+  .filter-ng-select {
+    font-size: 0.8125rem;
+
+    ::ng-deep .ng-select-container {
+      min-height: 1.85rem;
+      height: 1.85rem;
+      border-color: rgba(31, 128, 84, 0.22);
+      border-radius: 0.25rem;
+    }
+  }
+
+  .btn-sm {
+    min-height: 1.85rem;
+    padding: 0.2rem 0.85rem;
+    font-size: 0.78rem;
+  }
+}
+
+.empty-hint {
+  padding: 0.85rem 0.15rem;
+  font-size: 0.78rem;
+  color: rgba(23, 102, 67, 0.7);
+}
+
+.report-paper {
+  margin-top: 0.85rem;
+  padding: 1.1rem 1.15rem 1.25rem;
+  background: #fff;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.85rem;
+  box-shadow: 0 8px 22px rgba(18, 53, 40, 0.05);
+}
+
+.report-header {
+  margin-bottom: 0.85rem;
+  text-align: center;
+}
+
+.report-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #12261b;
+}
+
+.report-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: #3d5a4a;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 0.32rem 0.4rem;
+    border: 1px solid rgba(18, 53, 40, 0.18);
+    font-size: 0.74rem;
+    vertical-align: middle;
+  }
+
+  th {
+    background: #eef6f1;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #176643;
+  }
+
+  tfoot td {
+    font-weight: 700;
+    background: #f7fbf8;
+  }
+
+  tr.is-expired td {
+    color: #922b21;
+    background: rgba(192, 57, 43, 0.06);
+  }
+}
+
+.col-sl {
+  width: 2.4rem;
+  text-align: center;
+}
+
+.col-name {
+  font-weight: 650;
+  color: var(--green-ink);
+}
+
+.col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.col-total-label {
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 991.98px) {
+  .filter-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .filter-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .expired-stock-report {
+    max-width: none;
+  }
+
+  .report-paper {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .report-table th,
+  .report-table tr.is-expired td {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
