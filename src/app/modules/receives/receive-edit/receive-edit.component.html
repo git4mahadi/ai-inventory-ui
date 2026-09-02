@@ -171,7 +171,7 @@
                         (change)="onItemChange($index, $event)"
                         [class.is-invalid]="submitted && itemRow($index).controls['itemId'].invalid"
                       >
-                        @for (item of itemOptions; track item.id) {
+                        @for (item of itemPickerOptions(); track item.id) {
                           <ng-option [value]="item.id">{{ itemLabel(item) }}</ng-option>
                         }
                       </ng-select>
@@ -179,7 +179,9 @@
                         <div class="po-qty-meta">
                           <span>Received {{ alreadyReceivedQtyFor(itemRow($index).controls['itemId'].value) | bdNumber }}</span>
                           <span class="po-qty-sep">·</span>
-                          <span>Remaining {{ remainingQtyFor(itemRow($index).controls['itemId'].value) | bdNumber }}</span>
+                          <span [class.po-qty-remaining-zero]="(remainingQtyFor(itemRow($index).controls['itemId'].value, itemRow($index).controls['receivedQty'].value) ?? 0) <= 0">
+                            Remaining {{ remainingQtyFor(itemRow($index).controls['itemId'].value, itemRow($index).controls['receivedQty'].value) | bdNumber }}
+                          </span>
                         </div>
                       }
                     </td>

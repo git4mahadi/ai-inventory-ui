@@ -114,6 +114,34 @@ export function sumReceivedQtyByItemId(rows: AbstractControl[]): Map<string, num
   return receivedByItem;
 }
 
+export function hasRemainingReceivableQty(
+  itemId: unknown,
+  maxByItemId: Map<string, number>,
+): boolean {
+  const resolvedId = resolveItemId(itemId);
+  if (!resolvedId || !maxByItemId.has(resolvedId)) {
+    return false;
+  }
+  return (maxByItemId.get(resolvedId) ?? 0) > 0;
+}
+
+export function receivablePurchaseOrderItems(
+  poItems: PurchaseOrderItemResponse[] | null | undefined,
+  maxByItemId: Map<string, number>,
+): PurchaseOrderItemResponse[] {
+  return (poItems ?? []).filter((item) => hasRemainingReceivableQty(item.itemId, maxByItemId));
+}
+
+export function remainingQtyAfterCurrentReceive(
+  maxQty: number | null | undefined,
+  currentQty: number,
+): number | null {
+  if (maxQty == null) {
+    return null;
+  }
+  return roundQty(Math.max(0, maxQty - currentQty));
+}
+
 export function receivedQtyExceedsMax(
   rows: AbstractControl[],
   maxByItemId: Map<string, number>,

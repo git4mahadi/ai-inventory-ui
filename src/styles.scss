@@ -447,4 +447,30 @@ textarea.form-control-sm {
       box-shadow: none !important;
     }
   }
+
+  body.barcode-sheet-open {
+    background: #fff !important;
+
+    .sidebar,
+    .sidebar-backdrop,
+    .topbar,
+    app-footer,
+    .toast-container {
+      display: none !important;
+    }
+
+    .main-shell,
+    .main-content,
+    .page-body,
+    .page-canvas {
+      display: block !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      min-height: auto !important;
+      background: #fff !important;
+      box-shadow: none !important;
+    }
+  }
 }

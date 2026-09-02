@@ -1,0 +1,193 @@
+<div class="barcode-generate">
+  <div class="form-shell no-print">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Barcode Generate</h1>
+        <span class="toolbar-meta">CODE128 · A4 labels</span>
+      </div>
+      <a
+        routerLink="/items/list"
+        class="icon-action icon-back"
+        title="Back to list"
+        aria-label="Back to item list"
+      >
+        <span class="icon-graphic" aria-hidden="true"></span>
+      </a>
+    </div>
+
+    <form class="create-form" [formGroup]="pickerForm" (ngSubmit)="addItem()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="storeId" class="form-label">
+            Store <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="storeId"
+            class="form-ng-select"
+            formControlName="storeId"
+            placeholder="Select store"
+            [clearable]="false"
+            [searchable]="true"
+            [loading]="loadingStores"
+          >
+            @for (store of storeOptions; track store.id) {
+              <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+            }
+          </ng-select>
+        </div>
+
+        <div class="field picker-item">
+          <label for="itemId" class="form-label">Item</label>
+          <ng-select
+            id="itemId"
+            class="form-ng-select"
+            formControlName="itemId"
+            placeholder="Type at least 2 characters"
+            [items]="itemOptions"
+            bindLabel="itemName"
+            bindValue="id"
+            [clearable]="true"
+            [searchable]="true"
+            [typeahead]="itemTypeahead$"
+            [minTermLength]="2"
+            [loading]="loadingItems"
+            notFoundText="Type at least 2 characters"
+            (change)="onPickerItemChange($event)"
+          >
+            <ng-template ng-label-tmp let-item="item">
+              {{ itemLabel(item) }}
+            </ng-template>
+            <ng-template ng-option-tmp let-item="item">
+              <span class="item-option">
+                <span class="item-option-name">{{ itemLabel(item) }}</span>
+                @if (item.itemBarcode) {
+                  <span class="item-option-barcode">{{ item.itemBarcode }}</span>
+                } @else {
+                  <span class="item-option-missing">No barcode</span>
+                }
+              </span>
+            </ng-template>
+          </ng-select>
+        </div>
+
+        <div class="field">
+          <label for="count" class="form-label">Barcode count</label>
+          <input
+            id="count"
+            type="number"
+            class="form-control form-control-sm"
+            formControlName="count"
+            min="1"
+            max="99"
+            step="1"
+          />
+        </div>
+
+        <div class="field field-action">
+          <button
+            type="submit"
+            class="btn-picker-add"
+            title="Add item"
+            aria-label="Add item"
+          >
+            <span class="btn-picker-add-icon" aria-hidden="true"></span>
+            <span class="btn-picker-add-label">Add item</span>
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <div class="items-section">
+      <div class="items-header">
+        <h2 class="items-title">Selected items</h2>
+        <span class="items-meta">{{ cartItems.length }} item{{ cartItems.length === 1 ? '' : 's' }} · {{ labelCount }} labels</span>
+      </div>
+
+      @if (!cartItems.length) {
+        <div class="empty-hint">Search and add items, then set how many barcodes to print for each.</div>
+      } @else {
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Barcode</th>
+                <th>Count</th>
+                <th class="col-remove"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of cartItems; track item.itemId; let index = $index) {
+                <tr>
+                  <td>
+                    <div class="item-name">{{ item.itemName }}</div>
+                    @if (item.itemCode) {
+                      <div class="item-code">{{ item.itemCode }}</div>
+                    }
+                  </td>
+                  <td class="col-barcode">{{ item.itemBarcode }}</td>
+                  <td class="col-count">
+                    <input
+                      type="number"
+                      class="form-control form-control-sm"
+                      min="1"
+                      max="99"
+                      step="1"
+                      [ngModel]="item.count"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="onCountChange(index, $event)"
+                    />
+                  </td>
+                  <td class="col-remove">
+                    <button
+                      type="button"
+                      class="icon-action icon-delete"
+                      title="Remove item"
+                      aria-label="Remove item"
+                      (click)="removeItem(index)"
+                    >
+                      <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn btn-green btn-sm"
+          [disabled]="!cartItems.length"
+          (click)="generateAndPrint()"
+        >
+          Generate
+        </button>
+        @if (printLabels.length) {
+          <button type="button" class="btn btn-outline-green btn-sm" (click)="printSheet()">
+            Print again
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (printLabels.length) {
+    <section class="barcode-sheet" aria-label="A4 barcode labels">
+      @for (label of printLabels; track label.key) {
+        <article class="barcode-label">
+          <div class="label-name">{{ label.itemName }}</div>
+          @if (label.itemCode) {
+            <div class="label-code">{{ label.itemCode }}</div>
+          }
+          <svg #labelBarcode class="label-barcode" aria-hidden="true"></svg>
+          @if (label.salesRate != null) {
+            <div class="label-price">{{ label.salesRate | bdNumber }}</div>
+          }
+        </article>
+      }
+    </section>
+  }
+</div>

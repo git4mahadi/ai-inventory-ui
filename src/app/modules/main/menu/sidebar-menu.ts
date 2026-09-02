@@ -44,6 +44,12 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         shortLabel: 'IC',
         link: '/items/create',
       },
+      {
+        id: 'items-barcode-generate',
+        label: 'Barcode Generate',
+        shortLabel: 'BG',
+        link: '/items/barcode-generate',
+      },
     ],
   },
   {

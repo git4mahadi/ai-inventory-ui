@@ -19,9 +19,13 @@ import { toApiDate, toDatePickerValue } from '../../../core/utils/date.util';
 import {
   alreadyReceivedQtyByItemId,
   creditReceivedByItemId,
+  hasRemainingReceivableQty,
   maxReceivableByItemId,
   receivedQtyExceedsMax,
+  receivablePurchaseOrderItems,
+  remainingQtyAfterCurrentReceive,
   resolveItemId,
+  sumReceivedQtyByItemId,
 } from '../../../core/utils/receive-qty.util';
 import { ReceiveDto } from '../../../models/dto/ReceiveDto';
 import { ReceiveItemDto } from '../../../models/dto/ReceiveItemDto';
@@ -191,6 +195,12 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     return item.itemCode ? `${name} (${item.itemCode})` : name;
   }
 
+  itemPickerOptions(): ItemResponse[] {
+    return this.itemOptions.filter(
+      (item) => this.canReceiveItem(item.id) || this.isItemSelectedOnForm(item.id),
+    );
+  }
+
   lookupLabel(lookup: LookupResponse): string {
     return lookup.parentFullName || lookup.lookupName || lookup.id || '';
   }
@@ -268,6 +278,12 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     if (!itemId) {
       this.itemRow(index).patchValue({ itemName: '', unitPrice: null, uom: null });
       this.syncReceivedQtyMaxValidators();
+      return;
+    }
+    if (!this.canReceiveItem(itemId)) {
+      this.itemRow(index).patchValue({ itemId: null, itemName: '', unitPrice: null, uom: null });
+      this.syncReceivedQtyMaxValidators();
+      this.toastr.error('This item is already fully received against the purchase order');
       return;
     }
 
@@ -449,8 +465,14 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     return this.maxReceivableByItemId.get(resolvedId) ?? null;
   }
 
-  remainingQtyFor(itemId: unknown): number | null {
-    return this.maxReceivedQtyFor(itemId);
+  remainingQtyFor(itemId: unknown, _currentReceiveQty?: unknown): number | null {
+    const resolvedId = resolveItemId(itemId);
+    const maxQty = this.maxReceivedQtyFor(resolvedId);
+    if (maxQty == null || !resolvedId) {
+      return null;
+    }
+    const currentQty = sumReceivedQtyByItemId(this.itemRows.controls).get(resolvedId) || 0;
+    return remainingQtyAfterCurrentReceive(maxQty, currentQty);
   }
 
   alreadyReceivedQtyFor(itemId: unknown): number | null {
@@ -463,6 +485,27 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
 
   hasPurchaseOrderQtyFor(itemId: unknown): boolean {
     return this.remainingQtyFor(itemId) != null || this.alreadyReceivedQtyFor(itemId) != null;
+  }
+
+  canReceiveItem(itemId: unknown): boolean {
+    const resolvedId = resolveItemId(itemId);
+    if (!resolvedId) {
+      return false;
+    }
+    if (!this.maxReceivableByItemId.has(resolvedId)) {
+      return true;
+    }
+    return hasRemainingReceivableQty(resolvedId, this.maxReceivableByItemId);
+  }
+
+  private isItemSelectedOnForm(itemId: unknown): boolean {
+    const resolvedId = resolveItemId(itemId);
+    if (!resolvedId) {
+      return false;
+    }
+    return this.itemRows.controls.some(
+      (row) => resolveItemId(row.get('itemId')?.value) === resolvedId,
+    );
   }
 
   receivedQtyExceedsPurchaseOrder(): boolean {
@@ -484,7 +527,11 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     });
     this.ensureSelectedStore(order.storeId);
     this.ensureSelectedSupplier(order.supplierId);
-    this.replaceItemRows(order.items?.filter((item) => !!item.itemId) ?? []);
+    const poItems = receivablePurchaseOrderItems(order.items, this.maxReceivableByItemId);
+    this.replaceItemRows(poItems);
+    if ((order.items?.some((item) => !!item.itemId) ?? false) && poItems.length === 0) {
+      this.toastr.info('All purchase order items are already fully received');
+    }
   }
 
   private replaceItemRows(items: PurchaseOrderItemResponse[]): void {
@@ -597,7 +644,7 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
         }),
       )
       .pipe(
-        map((items) => items ?? []),
+        map((items) => (items ?? []).filter((item) => this.canReceiveItem(item.id))),
         catchError(() => of([])),
         finalize(() => (this.loadingItems = false)),
       );
