@@ -16,6 +16,13 @@ import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { generateBatchNo } from '../../../core/utils/batch-no.util';
 import { toApiDate, toDatePickerValue } from '../../../core/utils/date.util';
+import {
+  alreadyReceivedQtyByItemId,
+  creditReceivedByItemId,
+  maxReceivableByItemId,
+  receivedQtyExceedsMax,
+  resolveItemId,
+} from '../../../core/utils/receive-qty.util';
 import { ReceiveDto } from '../../../models/dto/ReceiveDto';
 import { ReceiveItemDto } from '../../../models/dto/ReceiveItemDto';
 import {
@@ -67,6 +74,8 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
   supplierOptions: SupplierResponse[] = [];
   purchaseOrderOptions: PurchaseOrderResponse[] = [];
   purchaseOrderItems: PurchaseOrderItemResponse[] = [];
+  maxReceivableByItemId = new Map<string, number>();
+  alreadyReceivedByItemId = new Map<string, number>();
   itemOptions: ItemResponse[] = [];
   packSizeOptions: LookupResponse[] = [];
 
@@ -87,27 +96,16 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
   private applyingPurchaseOrder = false;
   private purchaseOrderRequestVersion = 0;
   private readonly receivedQtyAgainstPoValidator: ValidatorFn = (control) => {
-    if (!(control instanceof FormArray) || !this.purchaseOrderItems.length) {
+    const rows = (control as FormArray)?.controls;
+    if (!Array.isArray(rows)) {
       return null;
     }
-
-    const receivedByItem = new Map<string, number>();
-    for (const row of control.controls) {
-      const itemId = row.get('itemId')?.value as string | null;
-      if (!itemId) {
-        continue;
-      }
-      receivedByItem.set(
-        itemId,
-        (receivedByItem.get(itemId) || 0) + Number(row.get('receivedQty')?.value || 0),
-      );
+    const hasSelectedItem = rows.some((row) => !!resolveItemId(row.get('itemId')?.value));
+    if (!hasSelectedItem) {
+      return null;
     }
-
-    for (const [itemId, received] of receivedByItem) {
-      const ordered = this.orderedQtyForItem(itemId);
-      if (ordered == null || received > ordered) {
-        return { receivedQtyExceedsPo: true };
-      }
+    if (this.maxReceivableByItemId.size === 0 || receivedQtyExceedsMax(rows, this.maxReceivableByItemId)) {
+      return { receivedQtyExceedsPo: true };
     }
     return null;
   };
@@ -229,6 +227,8 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     if (!purchaseOrderId) {
       this.applyingPurchaseOrder = false;
       this.purchaseOrderItems = [];
+      this.maxReceivableByItemId = new Map();
+      this.alreadyReceivedByItemId = new Map();
       this.receiveForm.patchValue({ storeId: null, supplierId: null });
       this.replaceItemRows([]);
       return;
@@ -302,10 +302,12 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
       return;
     }
     this.receiveForm.markAllAsTouched();
+    this.syncReceivedQtyMaxValidators();
+    if (this.receivedQtyExceedsPurchaseOrder()) {
+      this.toastr.error('Received quantity cannot exceed purchase order quantity');
+      return;
+    }
     if (this.receiveForm.invalid || this.loading || !this.receiveId) {
-      if (this.receivedQtyExceedsPurchaseOrder()) {
-        this.toastr.error('Received quantity cannot exceed purchase order quantity');
-      }
       return;
     }
 
@@ -393,12 +395,13 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
   }
 
   private createItemGroup(item?: ReceiveItemResponse): FormGroup {
+    const itemId = resolveItemId(item?.itemId);
     return this.formBuilder.group({
-      itemId: [item?.itemId ?? null, Validators.required],
+      itemId: [itemId, Validators.required],
       itemName: [item?.itemName ?? ''],
       receivedQty: [
         item?.receivedQty ?? null,
-        this.receivedQtyValidators(item?.itemId ?? null),
+        this.receivedQtyValidators(itemId),
       ],
       rejectedQty: [item?.rejectedQty ?? null, [Validators.min(0)]],
       unitPrice: [item?.unitPrice ?? null, [Validators.required, Validators.min(0)]],
@@ -438,12 +441,33 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  maxReceivedQtyFor(itemId: string | null | undefined): number | null {
-    return this.orderedQtyForItem(itemId);
+  maxReceivedQtyFor(itemId: unknown): number | null {
+    const resolvedId = resolveItemId(itemId);
+    if (!resolvedId || !this.maxReceivableByItemId.has(resolvedId)) {
+      return null;
+    }
+    return this.maxReceivableByItemId.get(resolvedId) ?? null;
+  }
+
+  remainingQtyFor(itemId: unknown): number | null {
+    return this.maxReceivedQtyFor(itemId);
+  }
+
+  alreadyReceivedQtyFor(itemId: unknown): number | null {
+    const resolvedId = resolveItemId(itemId);
+    if (!resolvedId || !this.alreadyReceivedByItemId.has(resolvedId)) {
+      return null;
+    }
+    return this.alreadyReceivedByItemId.get(resolvedId) ?? 0;
+  }
+
+  hasPurchaseOrderQtyFor(itemId: unknown): boolean {
+    return this.remainingQtyFor(itemId) != null || this.alreadyReceivedQtyFor(itemId) != null;
   }
 
   receivedQtyExceedsPurchaseOrder(): boolean {
     return (
+      receivedQtyExceedsMax(this.itemRows.controls, this.maxReceivableByItemId) ||
       !!this.itemRows.errors?.['receivedQtyExceedsPo'] ||
       this.itemRows.controls.some((row) => !!row.get('receivedQty')?.errors?.['max'])
     );
@@ -452,6 +476,8 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
   private applyPurchaseOrder(order: PurchaseOrderResponse): void {
     this.purchaseOrderOptions = this.mergeOptions(this.purchaseOrderOptions, [order]);
     this.purchaseOrderItems = order.items ?? [];
+    this.alreadyReceivedByItemId = alreadyReceivedQtyByItemId(this.purchaseOrderItems);
+    this.maxReceivableByItemId = maxReceivableByItemId(this.purchaseOrderItems);
     this.receiveForm.patchValue({
       storeId: order.storeId ?? null,
       supplierId: order.supplierId ?? null,
@@ -474,7 +500,7 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
         this.createItemGroup({
           itemId: item.itemId,
           itemName: item.itemName,
-          receivedQty: item.orderedQty,
+          receivedQty: this.maxReceivedQtyFor(item.itemId) ?? item.orderedQty,
           unitPrice: item.unitPrice,
         }),
       );
@@ -688,6 +714,8 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
   private loadPurchaseOrderLimits(purchaseOrderId?: string): void {
     if (!purchaseOrderId) {
       this.purchaseOrderItems = [];
+      this.maxReceivableByItemId = new Map();
+      this.alreadyReceivedByItemId = new Map();
       this.syncReceivedQtyMaxValidators();
       return;
     }
@@ -698,6 +726,15 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
         }
         this.purchaseOrderOptions = this.mergeOptions(this.purchaseOrderOptions, [order]);
         this.purchaseOrderItems = order.items ?? [];
+        const creditByItemId = creditReceivedByItemId(this.loadedRecord?.items);
+        this.alreadyReceivedByItemId = alreadyReceivedQtyByItemId(
+          this.purchaseOrderItems,
+          creditByItemId,
+        );
+        this.maxReceivableByItemId = maxReceivableByItemId(
+          this.purchaseOrderItems,
+          creditByItemId,
+        );
         this.syncReceivedQtyMaxValidators();
       },
     });
@@ -748,27 +785,16 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
 
   private receivedQtyValidators(itemId: string | null): ValidatorFn[] {
     const validators: ValidatorFn[] = [Validators.required, Validators.min(0.01)];
-    const ordered = this.orderedQtyForItem(itemId);
-    if (ordered != null) {
-      validators.push(Validators.max(ordered));
+    const maxQty = this.maxReceivedQtyFor(itemId);
+    if (maxQty != null) {
+      validators.push(Validators.max(maxQty));
     }
     return validators;
   }
 
-  private orderedQtyForItem(itemId: string | null | undefined): number | null {
-    if (!itemId || !this.purchaseOrderItems.length) {
-      return null;
-    }
-    const matching = this.purchaseOrderItems.filter((item) => item.itemId === itemId);
-    if (!matching.length) {
-      return null;
-    }
-    return matching.reduce((sum, item) => sum + Number(item.orderedQty || 0), 0);
-  }
-
   private syncReceivedQtyMaxValidators(): void {
     for (const row of this.itemRows.controls) {
-      const itemId = row.get('itemId')?.value as string | null;
+      const itemId = resolveItemId(row.get('itemId')?.value);
       const ctrl = row.get('receivedQty');
       ctrl?.setValidators(this.receivedQtyValidators(itemId));
       ctrl?.updateValueAndValidity({ emitEvent: false });

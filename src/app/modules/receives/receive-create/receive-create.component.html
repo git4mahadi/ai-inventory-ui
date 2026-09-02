@@ -157,6 +157,13 @@
                         <ng-option [value]="item.id">{{ itemLabel(item) }}</ng-option>
                       }
                     </ng-select>
+                    @if (hasPurchaseOrderQtyFor(itemRow($index).controls['itemId'].value)) {
+                      <div class="po-qty-meta">
+                        <span>Received {{ alreadyReceivedQtyFor(itemRow($index).controls['itemId'].value) | bdNumber }}</span>
+                        <span class="po-qty-sep">·</span>
+                        <span>Remaining {{ remainingQtyFor(itemRow($index).controls['itemId'].value) | bdNumber }}</span>
+                      </div>
+                    }
                   </td>
                   <td class="col-qty">
                     <input

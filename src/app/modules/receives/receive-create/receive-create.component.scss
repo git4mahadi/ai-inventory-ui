@@ -271,6 +271,23 @@
     width: 24%;
   }
 
+  .po-qty-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.2rem 0.35rem;
+    margin-top: 0.28rem;
+    font-size: 0.68rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    color: rgba(23, 102, 67, 0.78);
+    line-height: 1.25;
+  }
+
+  .po-qty-sep {
+    color: rgba(23, 102, 67, 0.35);
+  }
+
   .col-qty,
   .col-rate {
     width: 6.5rem;
