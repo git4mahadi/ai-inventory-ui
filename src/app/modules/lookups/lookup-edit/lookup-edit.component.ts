@@ -52,6 +52,7 @@ export class LookupEditComponent implements OnInit, OnDestroy {
       lookupShortName: ['', [Validators.maxLength(20)]],
       image: ['', [Validators.maxLength(255)]],
       parentId: [null as string | null],
+      enabled: [true],
     });
   }
 
@@ -112,6 +113,7 @@ export class LookupEditComponent implements OnInit, OnDestroy {
       lookupShortName: '',
       image: '',
       parentId: null,
+      enabled: true,
     });
     this.parentOptions = [];
   }
@@ -149,6 +151,7 @@ export class LookupEditComponent implements OnInit, OnDestroy {
       lookupShortName: value.lookupShortName?.trim() || undefined,
       image: value.image?.trim() || undefined,
       parentId: value.parentId || undefined,
+      enabled: !!value.enabled,
     });
 
     this.loading = true;
@@ -213,6 +216,7 @@ export class LookupEditComponent implements OnInit, OnDestroy {
         lookupShortName: normalized.lookupShortName ?? '',
         image: normalized.image ?? '',
         parentId: normalized.parentId ?? null,
+        enabled: normalized.enabled ?? true,
       },
       { emitEvent: false },
     );

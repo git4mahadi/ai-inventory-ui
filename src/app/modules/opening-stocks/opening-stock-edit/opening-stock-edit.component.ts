@@ -54,6 +54,10 @@ export class OpeningStockEditComponent implements OnInit, OnDestroy {
     showWeekNumbers: false,
     customTodayClass: 'bs-datepicker-today',
   };
+  readonly expireDatePickerConfig: Partial<BsDatepickerConfig> = {
+    ...this.datePickerConfig,
+    startView: 'year',
+  };
 
   storeOptions: StoreResponse[] = [];
   financialYearOptions: FinancialYearResponse[] = [];

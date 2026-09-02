@@ -5,6 +5,8 @@ import { SalesEditComponent } from './sales-edit/sales-edit.component';
 import { SalesListComponent } from './sales-list/sales-list.component';
 import { SalesSlipComponent } from './sales-slip/sales-slip.component';
 import { InvoiceListComponent } from './invoice-list/invoice-list.component';
+import { DueCollectionComponent } from './due-collection/due-collection.component';
+import { SalesReturnComponent } from './sales-return/sales-return.component';
 
 const routes: Routes = [
   {
@@ -31,6 +33,14 @@ const routes: Routes = [
   {
     path: 'invoices',
     component: InvoiceListComponent,
+  },
+  {
+    path: 'due-collection',
+    component: DueCollectionComponent,
+  },
+  {
+    path: 'sales-return',
+    component: SalesReturnComponent,
   },
 ];
 

@@ -166,6 +166,25 @@
   grid-column: 1 / -1;
 }
 
+.field-check {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0.15rem;
+
+  .form-check {
+    margin: 0;
+    min-height: 1.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .form-check-label {
+    font-size: 0.8125rem;
+    color: var(--green-ink);
+  }
+}
+
 .form-actions {
   display: flex;
   gap: 0.4rem;

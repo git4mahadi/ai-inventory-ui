@@ -1,6 +1,7 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { NgSelectComponent } from '@ng-select/ng-select';
 import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import {
   Subject,
@@ -16,6 +17,7 @@ import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { generateBatchNo } from '../../../core/utils/batch-no.util';
 import { toApiDate } from '../../../core/utils/date.util';
+import { roundMoney, toNumber } from '../../../core/utils/sales-cart.util';
 import { OpeningStockDto } from '../../../models/dto/OpeningStockDto';
 import { OpeningStockItemDto } from '../../../models/dto/OpeningStockItemDto';
 import { LookupEnum } from '../../../models/enums/LookupEnum';
@@ -35,6 +37,21 @@ import { OpeningStockApiService } from '../../../services/OpeningStockApiService
 import { StoreApiService } from '../../../services/StoreApiService';
 import { SupplierApiService } from '../../../services/SupplierApiService';
 
+interface OpeningStockCartItem {
+  lineId: string;
+  itemId: string;
+  itemName: string;
+  itemCode?: string;
+  stockQty: number;
+  uomId: string | null;
+  uomName?: string;
+  batchNo: string;
+  expireDate: Date | null;
+  purchaseRate: number;
+  salesRate: number;
+  supplierId: string | null;
+}
+
 @Component({
   selector: 'app-opening-stock-create',
   standalone: false,
@@ -42,7 +59,11 @@ import { SupplierApiService } from '../../../services/SupplierApiService';
   styleUrl: './opening-stock-create.component.scss',
 })
 export class OpeningStockCreateComponent implements OnInit, OnDestroy {
+  @ViewChild('pickerItemSelect') pickerItemSelect?: NgSelectComponent;
+  @ViewChild('pickerQuantityInput') pickerQuantityInput?: ElementRef<HTMLInputElement>;
+
   readonly openingStockForm: FormGroup;
+  readonly pickerForm: FormGroup;
   readonly itemTypeahead$ = new Subject<string>();
   readonly supplierTypeahead$ = new Subject<string>();
   readonly datePickerConfig: Partial<BsDatepickerConfig> = {
@@ -52,23 +73,29 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
     showWeekNumbers: false,
     customTodayClass: 'bs-datepicker-today',
   };
+  readonly expireDatePickerConfig: Partial<BsDatepickerConfig> = {
+    ...this.datePickerConfig,
+    startView: 'year',
+  };
 
   storeOptions: StoreResponse[] = [];
   financialYearOptions: FinancialYearResponse[] = [];
   itemOptions: ItemResponse[] = [];
   supplierOptions: SupplierResponse[] = [];
   packSizeOptions: LookupResponse[] = [];
+  cartItems: OpeningStockCartItem[] = [];
 
   loadingStores = false;
   loadingFinancialYears = false;
   loadingItems = false;
   loadingSuppliers = false;
   loadingLookups = false;
-
   submitted = false;
   loading = false;
 
   private readonly destroy$ = new Subject<void>();
+  private previousStoreId: string | null = null;
+  private lineSeq = 0;
 
   constructor(
     private readonly formBuilder: FormBuilder,
@@ -86,7 +113,14 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
       challanDate: [new Date(), Validators.required],
       financialYearId: [null as string | null, Validators.required],
       storeId: [null as string | null, Validators.required],
-      items: this.formBuilder.array([this.createItemGroup()]),
+    });
+    this.pickerForm = this.formBuilder.group({
+      itemId: [null as string | null],
+      purchaseRate: [{ value: null as number | null, disabled: true }],
+      salesRate: [{ value: null as number | null, disabled: true }],
+      currentStock: [{ value: null as number | null, disabled: true }],
+      quantity: [null as number | null],
+      expireDate: [null as Date | null],
     });
   }
 
@@ -94,19 +128,26 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
     return this.openingStockForm.controls;
   }
 
-  get itemRows(): FormArray {
-    return this.openingStockForm.get('items') as FormArray;
+  get purchaseTotal(): number {
+    return roundMoney(
+      this.cartItems.reduce(
+        (sum, item) => sum + toNumber(item.stockQty) * toNumber(item.purchaseRate),
+        0,
+      ),
+    );
   }
 
-  get itemsTotal(): number {
-    return this.itemRows.controls.reduce((sum, row) => {
-      const qty = Number(row.get('stockQty')?.value || 0);
-      const rate = Number(row.get('purchaseRate')?.value || 0);
-      return sum + qty * rate;
-    }, 0);
+  get salesTotal(): number {
+    return roundMoney(
+      this.cartItems.reduce(
+        (sum, item) => sum + toNumber(item.stockQty) * toNumber(item.salesRate),
+        0,
+      ),
+    );
   }
 
   ngOnInit(): void {
+    this.previousStoreId = this.openingStockForm.get('storeId')?.value ?? null;
     this.loadStores();
     this.loadFinancialYears();
     this.loadPackSizes();
@@ -114,8 +155,8 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
     this.setupSupplierTypeahead();
     this.openingStockForm
       .get('storeId')
-      ?.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe(() => this.refreshBatchNumbers());
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe((storeId) => this.onStoreChange(storeId));
   }
 
   ngOnDestroy(): void {
@@ -146,44 +187,130 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
     return lookup.parentFullName || lookup.lookupName || lookup.id || '';
   }
 
-  itemRow(index: number): FormGroup {
-    return this.itemRows.at(index) as FormGroup;
+  itemStock(item: ItemResponse): number {
+    return toNumber(item.currentStock);
   }
 
-  addItemRow(): void {
-    this.itemRows.push(this.createItemGroup());
+  linePurchaseTotal(item: OpeningStockCartItem): number {
+    return roundMoney(toNumber(item.stockQty) * toNumber(item.purchaseRate));
   }
 
-  removeItemRow(index: number): void {
-    if (this.itemRows.length <= 1) {
-      return;
-    }
-    this.itemRows.removeAt(index);
-  }
-
-  onItemChange(index: number, selected: string | ItemResponse | null): void {
+  onPickerItemChange(selected: string | ItemResponse | null): void {
     const itemId = typeof selected === 'string' ? selected : selected?.id ?? null;
-    if (!itemId) {
+    const item =
+      (typeof selected === 'object' && selected ? selected : null) ||
+      this.itemOptions.find((option) => option.id === itemId) ||
+      null;
+    this.pickerForm.patchValue({
+      purchaseRate: item?.purchaseRate ?? null,
+      salesRate: item?.salesRate ?? null,
+      currentStock: item?.currentStock ?? null,
+      quantity: null,
+    });
+    if (item?.supplierId) {
+      this.ensureSupplierOption(item.supplierId, item.supplierName);
+    }
+    if (item?.packSizeId) {
+      this.ensurePackSizeOption(item.packSizeId, item.packSizeName);
+    }
+    if (itemId) {
+      this.focusPickerQuantityInput();
+    }
+  }
+
+  onPickerQuantityEnter(event: Event): void {
+    event.preventDefault();
+    this.addPickerItem();
+  }
+
+  addPickerItem(): void {
+    const storeId = this.openingStockForm.get('storeId')?.value;
+    if (!storeId) {
+      this.toastr.error('Select a store first');
       return;
     }
 
-    this.itemApi
-      .getItemById(itemId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (item) => {
-          this.itemOptions = this.mergeOptions(this.itemOptions, [item]);
-          this.itemRow(index).patchValue({
-            itemName: item.itemName || '',
-            uom: item.packSizeId || null,
-            purchaseRate: item.purchaseRate ?? null,
-            salesRate: item.salesRate ?? null,
-            supplierId: item.supplierId || null,
-          });
-          this.ensurePackSizeOption(item.packSizeId, item.packSizeName);
-          this.ensureSupplierOption(item.supplierId, item.supplierName);
-        },
-      });
+    const itemId = this.pickerForm.get('itemId')?.value as string | null;
+    const item = this.itemOptions.find((option) => option.id === itemId);
+    if (!itemId || !item) {
+      this.toastr.error('Select an item');
+      return;
+    }
+
+    const quantity = toNumber(this.pickerForm.get('quantity')?.value);
+    if (quantity <= 0) {
+      this.toastr.error('Enter a quantity');
+      return;
+    }
+
+    const nextItem: OpeningStockCartItem = {
+      lineId: `line-${++this.lineSeq}`,
+      itemId,
+      itemName: item.itemName || itemId,
+      itemCode: item.itemCode,
+      stockQty: quantity,
+      uomId: item.packSizeId || null,
+      uomName: item.packSizeName,
+      batchNo: this.nextBatchNo(),
+      expireDate: this.pickerForm.get('expireDate')?.value ?? null,
+      purchaseRate: toNumber(item.purchaseRate),
+      salesRate: toNumber(item.salesRate),
+      supplierId: item.supplierId || null,
+    };
+    this.ensurePackSizeOption(item.packSizeId, item.packSizeName);
+    this.ensureSupplierOption(item.supplierId, item.supplierName);
+    this.cartItems = [...this.cartItems, nextItem];
+    this.resetPicker(false);
+    this.focusPickerItemSelect();
+  }
+
+  removeCartItem(index: number): void {
+    this.cartItems = this.cartItems.filter((_, itemIndex) => itemIndex !== index);
+  }
+
+  onCartQtyChange(index: number, value: number | string | null): void {
+    const item = this.cartItems[index];
+    if (!item) {
+      return;
+    }
+    item.stockQty = Math.max(0, toNumber(value));
+  }
+
+  onCartRateChange(
+    index: number,
+    field: 'purchaseRate' | 'salesRate',
+    value: number | string | null,
+  ): void {
+    const item = this.cartItems[index];
+    if (!item) {
+      return;
+    }
+    item[field] = Math.max(0, toNumber(value));
+  }
+
+  onCartExpireChange(index: number, value: Date | null): void {
+    const item = this.cartItems[index];
+    if (!item) {
+      return;
+    }
+    item.expireDate = value;
+  }
+
+  onCartUomChange(index: number, uomId: string | null): void {
+    const item = this.cartItems[index];
+    if (!item) {
+      return;
+    }
+    item.uomId = uomId;
+    item.uomName = this.resolveUomName(uomId);
+  }
+
+  onCartSupplierChange(index: number, supplierId: string | null): void {
+    const item = this.cartItems[index];
+    if (!item) {
+      return;
+    }
+    item.supplierId = supplierId;
   }
 
   onSubmit(): void {
@@ -192,7 +319,14 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
       this.openingStockForm.markAllAsTouched();
       return;
     }
-
+    if (!this.cartItems.length) {
+      this.toastr.error('Add at least one item');
+      return;
+    }
+    if (this.cartItems.some((item) => item.stockQty <= 0)) {
+      this.toastr.error('Each cart item needs a quantity');
+      return;
+    }
     if (this.hasDuplicateItemBatch()) {
       this.toastr.error('Duplicate item and batch combination found in items');
       return;
@@ -209,20 +343,20 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
       challanDate: toApiDate(value.challanDate),
       financialYearId: value.financialYearId,
       storeId: value.storeId,
-      items: this.itemRows.controls.map((row) => {
-        const rowValue = row.value;
-        return new OpeningStockItemDto({
-          supplierId: rowValue.supplierId || undefined,
-          itemId: rowValue.itemId,
-          itemName: rowValue.itemName?.trim() || undefined,
-          stockQty: Number(rowValue.stockQty),
-          uom: this.resolveUomName(rowValue.uom),
-          batchNo: rowValue.batchNo?.trim(),
-          expireDate: toApiDate(rowValue.expireDate),
-          purchaseRate: Number(rowValue.purchaseRate),
-          salesRate: Number(rowValue.salesRate),
-        });
-      }),
+      items: this.cartItems.map(
+        (item) =>
+          new OpeningStockItemDto({
+            supplierId: item.supplierId || undefined,
+            itemId: item.itemId,
+            itemName: item.itemName,
+            stockQty: item.stockQty,
+            uom: this.resolveUomName(item.uomId) || item.uomName,
+            batchNo: item.batchNo,
+            expireDate: toApiDate(item.expireDate),
+            purchaseRate: item.purchaseRate,
+            salesRate: item.salesRate,
+          }),
+      ),
     });
 
     this.loading = true;
@@ -244,27 +378,50 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
       financialYearId: this.currentFinancialYearId(),
       storeId: this.defaultStoreId(),
     });
-    this.itemRows.clear();
-    this.itemRows.push(this.createItemGroup());
-    this.itemOptions = [];
+    this.cartItems = [];
     this.supplierOptions = [];
+    this.resetPicker(true);
     this.submitted = false;
+    this.previousStoreId = this.openingStockForm.get('storeId')?.value ?? null;
   }
 
-  private createItemGroup(): FormGroup {
-    return this.formBuilder.group({
-      supplierId: [null as string | null],
-      itemId: [null as string | null, Validators.required],
-      itemName: [''],
-      stockQty: [null, [Validators.required, Validators.min(0.01)]],
-      uom: [null as string | null],
-      batchNo: [
-        this.nextBatchNo(),
-        [Validators.required, Validators.maxLength(30)],
-      ],
-      expireDate: [null as Date | null],
-      purchaseRate: [null, [Validators.required, Validators.min(0)]],
-      salesRate: [null, [Validators.required, Validators.min(0)]],
+  private onStoreChange(storeId: string | null): void {
+    if (storeId === this.previousStoreId) {
+      return;
+    }
+    const hadCart = this.cartItems.length > 0;
+    this.cartItems = [];
+    this.resetPicker(true);
+    this.previousStoreId = storeId;
+    if (hadCart) {
+      this.toastr.info('Cart cleared because the store changed');
+    }
+  }
+
+  private resetPicker(clearOptions: boolean): void {
+    this.pickerForm.reset({
+      itemId: null,
+      purchaseRate: null,
+      salesRate: null,
+      currentStock: null,
+      quantity: null,
+      expireDate: null,
+    });
+    if (clearOptions) {
+      this.itemOptions = [];
+    }
+  }
+
+  private focusPickerItemSelect(): void {
+    setTimeout(() => {
+      this.pickerItemSelect?.focus();
+      this.pickerItemSelect?.open();
+    });
+  }
+
+  private focusPickerQuantityInput(): void {
+    setTimeout(() => {
+      this.pickerQuantityInput?.nativeElement.focus();
     });
   }
 
@@ -272,14 +429,8 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
     return generateBatchNo(this.selectedStoreCode());
   }
 
-  private refreshBatchNumbers(): void {
-    for (const row of this.itemRows.controls) {
-      row.patchValue({ batchNo: this.nextBatchNo() }, { emitEvent: false });
-    }
-  }
-
   private selectedStoreCode(): string | null {
-    const storeId = this.openingStockForm?.get('storeId')?.value as string | null;
+    const storeId = this.openingStockForm.get('storeId')?.value as string | null;
     if (!storeId) {
       return null;
     }
@@ -295,7 +446,7 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
       )
       .subscribe((items) => {
-        this.itemOptions = this.mergeOptions(this.selectedItemOptions(), items);
+        this.itemOptions = this.mergeOptions(this.selectedPickerItem(), items);
       });
   }
 
@@ -308,10 +459,7 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
       )
       .subscribe((suppliers) => {
-        this.supplierOptions = this.mergeOptions(
-          this.selectedSupplierOptions(),
-          suppliers,
-        );
+        this.supplierOptions = this.mergeOptions(this.selectedSupplierOptions(), suppliers);
       });
   }
 
@@ -328,8 +476,7 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
         const defaultStoreId = this.defaultStoreId();
         if (defaultStoreId && !this.openingStockForm.get('storeId')?.value) {
           this.openingStockForm.patchValue({ storeId: defaultStoreId });
-        } else {
-          this.refreshBatchNumbers();
+          this.previousStoreId = defaultStoreId;
         }
       });
   }
@@ -366,16 +513,20 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
 
   private searchItems(term: string) {
     const searchTerm = term?.trim();
+    const storeId = this.openingStockForm.get('storeId')?.value as string | null;
+    if (!storeId) {
+      return of(this.selectedPickerItem());
+    }
     if (!searchTerm || searchTerm.length < 2) {
-      return of(this.selectedItemOptions());
+      return of(this.selectedPickerItem());
     }
 
     this.loadingItems = true;
     return this.itemApi
-      .searchTerm(
+      .searchTermWithStock(
         new ItemSearchDto({
           searchTerm,
-          storeId: this.openingStockForm.get('storeId')?.value || undefined,
+          storeId,
           enabled: true,
         }),
       )
@@ -407,16 +558,14 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
       );
   }
 
-  private selectedItemOptions(): ItemResponse[] {
-    const selectedIds = this.itemRows.controls
-      .map((row) => row.get('itemId')?.value as string | null)
-      .filter((id): id is string => !!id);
-    return this.itemOptions.filter((item) => item.id && selectedIds.includes(item.id));
+  private selectedPickerItem(): ItemResponse[] {
+    const selectedId = this.pickerForm.get('itemId')?.value as string | null;
+    return this.itemOptions.filter((item) => item.id && item.id === selectedId);
   }
 
   private selectedSupplierOptions(): SupplierResponse[] {
-    const selectedIds = this.itemRows.controls
-      .map((row) => row.get('supplierId')?.value as string | null)
+    const selectedIds = this.cartItems
+      .map((item) => item.supplierId)
       .filter((id): id is string => !!id);
     return this.supplierOptions.filter(
       (supplier) => supplier.id && selectedIds.includes(supplier.id),
@@ -466,13 +615,12 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
 
   private hasDuplicateItemBatch(): boolean {
     const keys = new Set<string>();
-    for (const row of this.itemRows.controls) {
-      const itemId = row.get('itemId')?.value as string | null;
-      const batchNo = String(row.get('batchNo')?.value || '').trim();
-      if (!itemId || !batchNo) {
+    for (const item of this.cartItems) {
+      const batchNo = item.batchNo?.trim();
+      if (!item.itemId || !batchNo) {
         continue;
       }
-      const key = `${itemId}|${batchNo}`;
+      const key = `${item.itemId}|${batchNo}`;
       if (keys.has(key)) {
         return true;
       }

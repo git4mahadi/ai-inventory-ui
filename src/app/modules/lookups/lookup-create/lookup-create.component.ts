@@ -48,6 +48,7 @@ export class LookupCreateComponent implements OnInit, OnDestroy {
       lookupShortName: ['', [Validators.maxLength(20)]],
       image: ['', [Validators.maxLength(255)]],
       parentId: [null as string | null],
+      enabled: [true],
     });
   }
 
@@ -96,6 +97,7 @@ export class LookupCreateComponent implements OnInit, OnDestroy {
       lookupShortName: value.lookupShortName?.trim() || undefined,
       image: value.image?.trim() || undefined,
       parentId: value.parentId || undefined,
+      enabled: !!value.enabled,
     });
 
     this.loading = true;
@@ -117,6 +119,7 @@ export class LookupCreateComponent implements OnInit, OnDestroy {
       lookupShortName: '',
       image: '',
       parentId: null,
+      enabled: true,
     });
     this.parentOptions = [];
     this.submitted = false;

@@ -1,6 +1,7 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { NgSelectComponent } from '@ng-select/ng-select';
 import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import {
   Subject,
@@ -19,6 +20,7 @@ import {
   calculatePurchaseOrderGrandTotal,
   calculatePurchaseOrderLineTotal,
 } from '../../../core/utils/purchase-order-total.util';
+import { roundMoney, toNumber } from '../../../core/utils/sales-cart.util';
 import { PurchaseOrderDto } from '../../../models/dto/PurchaseOrderDto';
 import { PurchaseOrderItemDto } from '../../../models/dto/PurchaseOrderItemDto';
 import { ItemResponse } from '../../../models/response/ItemResponse';
@@ -32,6 +34,18 @@ import { PurchaseOrderApiService } from '../../../services/PurchaseOrderApiServi
 import { StoreApiService } from '../../../services/StoreApiService';
 import { SupplierApiService } from '../../../services/SupplierApiService';
 
+interface PurchaseOrderCartItem {
+  itemId: string;
+  itemName: string;
+  itemCode?: string;
+  orderedQty: number;
+  unitPrice: number;
+  currentStock?: number;
+  discountPercent: number;
+  taxPercent: number;
+  remarks: string;
+}
+
 @Component({
   selector: 'app-purchase-order-create',
   standalone: false,
@@ -39,7 +53,11 @@ import { SupplierApiService } from '../../../services/SupplierApiService';
   styleUrl: './purchase-order-create.component.scss',
 })
 export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
+  @ViewChild('pickerItemSelect') pickerItemSelect?: NgSelectComponent;
+  @ViewChild('pickerQuantityInput') pickerQuantityInput?: ElementRef<HTMLInputElement>;
+
   readonly purchaseOrderForm: FormGroup;
+  readonly pickerForm: FormGroup;
   readonly itemTypeahead$ = new Subject<string>();
   readonly supplierTypeahead$ = new Subject<string>();
   readonly datePickerConfig: Partial<BsDatepickerConfig> = {
@@ -53,15 +71,16 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
   storeOptions: StoreResponse[] = [];
   itemOptions: ItemResponse[] = [];
   supplierOptions: SupplierResponse[] = [];
+  cartItems: PurchaseOrderCartItem[] = [];
 
   loadingStores = false;
   loadingItems = false;
   loadingSuppliers = false;
-
   submitted = false;
   loading = false;
 
   private readonly destroy$ = new Subject<void>();
+  private previousStoreId: string | null = null;
 
   constructor(
     private readonly formBuilder: FormBuilder,
@@ -82,7 +101,13 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
       shippingCharge: [null],
       otherCharge: [null],
       remarks: ['', [Validators.maxLength(255)]],
-      items: this.formBuilder.array([this.createItemGroup()]),
+    });
+    this.pickerForm = this.formBuilder.group({
+      itemId: [null as string | null],
+      purchaseRate: [{ value: null as number | null, disabled: true }],
+      salesRate: [{ value: null as number | null, disabled: true }],
+      currentStock: [{ value: null as number | null, disabled: true }],
+      quantity: [null as number | null],
     });
   }
 
@@ -90,36 +115,34 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
     return this.purchaseOrderForm.controls;
   }
 
-  get itemRows(): FormArray {
-    return this.purchaseOrderForm.get('items') as FormArray;
-  }
-
   get subTotal(): number {
-    return this.itemRows.controls.reduce(
-      (sum, row) => sum + calculatePurchaseOrderLineTotal(row.value),
-      0,
+    return roundMoney(
+      this.cartItems.reduce((sum, item) => sum + calculatePurchaseOrderLineTotal(item), 0),
     );
   }
 
   get grandTotal(): number {
     const value = this.purchaseOrderForm.value;
-    return calculatePurchaseOrderGrandTotal({
-      subTotal: this.subTotal,
-      discountAmount: value.discountAmount,
-      taxAmount: value.taxAmount,
-      shippingCharge: value.shippingCharge,
-      otherCharge: value.otherCharge,
-    });
+    return roundMoney(
+      calculatePurchaseOrderGrandTotal({
+        subTotal: this.subTotal,
+        discountAmount: value.discountAmount,
+        taxAmount: value.taxAmount,
+        shippingCharge: value.shippingCharge,
+        otherCharge: value.otherCharge,
+      }),
+    );
   }
 
   ngOnInit(): void {
+    this.previousStoreId = this.purchaseOrderForm.get('storeId')?.value ?? null;
     this.loadStores();
     this.setupItemTypeahead();
     this.setupSupplierTypeahead();
     this.purchaseOrderForm
       .get('storeId')
-      ?.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe(() => this.onStoreChange());
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe((storeId) => this.onStoreChange(storeId));
   }
 
   ngOnDestroy(): void {
@@ -141,44 +164,120 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
     return supplier.supplierName || supplier.id || '';
   }
 
-  itemRow(index: number): FormGroup {
-    return this.itemRows.at(index) as FormGroup;
+  itemStock(item: ItemResponse): number {
+    return toNumber(item.currentStock);
   }
 
-  lineTotalAt(index: number): number {
-    return calculatePurchaseOrderLineTotal(this.itemRow(index).value);
+  lineTotal(item: PurchaseOrderCartItem): number {
+    return roundMoney(calculatePurchaseOrderLineTotal(item));
   }
 
-  addItemRow(): void {
-    this.itemRows.push(this.createItemGroup());
-  }
-
-  removeItemRow(index: number): void {
-    if (this.itemRows.length <= 1) {
-      return;
-    }
-    this.itemRows.removeAt(index);
-  }
-
-  onItemChange(index: number, selected: string | ItemResponse | null): void {
+  onPickerItemChange(selected: string | ItemResponse | null): void {
     const itemId = typeof selected === 'string' ? selected : selected?.id ?? null;
-    if (!itemId) {
-      this.itemRow(index).patchValue({ itemName: '', unitPrice: null });
+    const item =
+      (typeof selected === 'object' && selected ? selected : null) ||
+      this.itemOptions.find((option) => option.id === itemId) ||
+      null;
+    this.pickerForm.patchValue({
+      purchaseRate: item?.purchaseRate ?? null,
+      salesRate: item?.salesRate ?? null,
+      currentStock: item?.currentStock ?? null,
+      quantity: null,
+    });
+    if (itemId) {
+      this.focusPickerQuantityInput();
+    }
+  }
+
+  onPickerQuantityEnter(event: Event): void {
+    event.preventDefault();
+    this.addPickerItem();
+  }
+
+  addPickerItem(): void {
+    const storeId = this.purchaseOrderForm.get('storeId')?.value;
+    if (!storeId) {
+      this.toastr.error('Select a store first');
       return;
     }
 
-    this.itemApi
-      .getItemById(itemId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (item) => {
-          this.itemOptions = this.mergeOptions(this.itemOptions, [item]);
-          this.itemRow(index).patchValue({
-            itemName: item.itemName || '',
-            unitPrice: item.purchaseRate ?? null,
-          });
+    const itemId = this.pickerForm.get('itemId')?.value as string | null;
+    const item = this.itemOptions.find((option) => option.id === itemId);
+    if (!itemId || !item) {
+      this.toastr.error('Select an item');
+      return;
+    }
+
+    const quantity = toNumber(this.pickerForm.get('quantity')?.value);
+    if (quantity <= 0) {
+      this.toastr.error('Enter a quantity');
+      return;
+    }
+
+    const existing = this.cartItems.find((row) => row.itemId === itemId);
+    if (existing) {
+      existing.orderedQty = roundMoney(existing.orderedQty + quantity);
+      existing.currentStock = toNumber(item.currentStock);
+      this.cartItems = [...this.cartItems];
+    } else {
+      this.cartItems = [
+        ...this.cartItems,
+        {
+          itemId,
+          itemName: item.itemName || itemId,
+          itemCode: item.itemCode,
+          orderedQty: quantity,
+          unitPrice: toNumber(item.purchaseRate),
+          currentStock: toNumber(item.currentStock),
+          discountPercent: 0,
+          taxPercent: 0,
+          remarks: '',
         },
-      });
+      ];
+    }
+
+    this.resetPicker(false);
+    this.focusPickerItemSelect();
+  }
+
+  removeCartItem(index: number): void {
+    this.cartItems = this.cartItems.filter((_, itemIndex) => itemIndex !== index);
+  }
+
+  onCartQtyChange(index: number, value: number | string | null): void {
+    const item = this.cartItems[index];
+    if (!item) {
+      return;
+    }
+    item.orderedQty = Math.max(0, toNumber(value));
+  }
+
+  onCartPriceChange(index: number, value: number | string | null): void {
+    const item = this.cartItems[index];
+    if (!item) {
+      return;
+    }
+    item.unitPrice = Math.max(0, toNumber(value));
+  }
+
+  onCartPercentChange(
+    index: number,
+    field: 'discountPercent' | 'taxPercent',
+    value: number | string | null,
+  ): void {
+    const item = this.cartItems[index];
+    if (!item) {
+      return;
+    }
+    item[field] = Math.max(0, toNumber(value));
+  }
+
+  onCartRemarksChange(index: number, value: string | null): void {
+    const item = this.cartItems[index];
+    if (!item) {
+      return;
+    }
+    item.remarks = value ?? '';
   }
 
   onSubmit(): void {
@@ -187,11 +286,18 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
       this.purchaseOrderForm.markAllAsTouched();
       return;
     }
+    if (!this.cartItems.length) {
+      this.toastr.error('Add at least one item');
+      return;
+    }
+    if (this.cartItems.some((item) => item.orderedQty <= 0)) {
+      this.toastr.error('Each cart item needs a quantity');
+      return;
+    }
 
-    const dto = this.buildDto();
     this.loading = true;
     this.purchaseOrderApi
-      .createPurchaseOrder(dto)
+      .createPurchaseOrder(this.buildDto())
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
         next: () => {
@@ -213,29 +319,29 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
       otherCharge: null,
       remarks: '',
     });
-    this.itemRows.clear();
-    this.itemRows.push(this.createItemGroup());
-    this.itemOptions = [];
+    this.cartItems = [];
     this.supplierOptions = [];
+    this.resetPicker(true);
     this.submitted = false;
+    this.previousStoreId = this.purchaseOrderForm.get('storeId')?.value ?? null;
   }
 
   private buildDto(): PurchaseOrderDto {
     const value = this.purchaseOrderForm.value;
-    const items = this.itemRows.controls.map((row) => {
-      const rowValue = row.value;
-      return new PurchaseOrderItemDto({
-        itemId: rowValue.itemId,
-        orderedQty: Number(rowValue.orderedQty),
-        receivedQty: 0,
-        unitPrice: Number(rowValue.unitPrice),
-        discountPercent: Number(rowValue.discountPercent || 0),
-        discountAmount: Number(rowValue.discountAmount || 0),
-        taxPercent: Number(rowValue.taxPercent || 0),
-        taxAmount: Number(rowValue.taxAmount || 0),
-        remarks: rowValue.remarks?.trim() || undefined,
-      });
-    });
+    const items = this.cartItems.map(
+      (item) =>
+        new PurchaseOrderItemDto({
+          itemId: item.itemId,
+          orderedQty: item.orderedQty,
+          receivedQty: 0,
+          unitPrice: item.unitPrice,
+          discountPercent: toNumber(item.discountPercent),
+          discountAmount: 0,
+          taxPercent: toNumber(item.taxPercent),
+          taxAmount: 0,
+          remarks: item.remarks?.trim() || undefined,
+        }),
+    );
 
     return new PurchaseOrderDto({
       orderDate: toApiDate(value.orderDate),
@@ -243,42 +349,53 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
       storeId: value.storeId,
       supplierId: value.supplierId,
       subTotal: this.subTotal,
-      discountAmount: Number(value.discountAmount || 0),
-      taxAmount: Number(value.taxAmount || 0),
-      shippingCharge: Number(value.shippingCharge || 0),
-      otherCharge: Number(value.otherCharge || 0),
+      discountAmount: toNumber(value.discountAmount),
+      taxAmount: toNumber(value.taxAmount),
+      shippingCharge: toNumber(value.shippingCharge),
+      otherCharge: toNumber(value.otherCharge),
       grandTotal: this.grandTotal,
       remarks: value.remarks?.trim() || undefined,
       items,
     });
   }
 
-  private createItemGroup(): FormGroup {
-    return this.formBuilder.group({
-      itemId: [null as string | null, Validators.required],
-      itemName: [''],
-      orderedQty: [null, [Validators.required, Validators.min(0.01)]],
-      unitPrice: [null, [Validators.required, Validators.min(0)]],
-      discountPercent: [null, [Validators.min(0)]],
-      discountAmount: [null, [Validators.min(0)]],
-      taxPercent: [null, [Validators.min(0)]],
-      taxAmount: [null, [Validators.min(0)]],
-      remarks: ['', [Validators.maxLength(120)]],
+  private onStoreChange(storeId: string | null): void {
+    if (storeId === this.previousStoreId) {
+      return;
+    }
+    const hadCart = this.cartItems.length > 0;
+    this.cartItems = [];
+    this.resetPicker(true);
+    this.previousStoreId = storeId;
+    if (hadCart) {
+      this.toastr.info('Cart cleared because the store changed');
+    }
+  }
+
+  private resetPicker(clearOptions: boolean): void {
+    this.pickerForm.reset({
+      itemId: null,
+      purchaseRate: null,
+      salesRate: null,
+      currentStock: null,
+      quantity: null,
+    });
+    if (clearOptions) {
+      this.itemOptions = [];
+    }
+  }
+
+  private focusPickerItemSelect(): void {
+    setTimeout(() => {
+      this.pickerItemSelect?.focus();
+      this.pickerItemSelect?.open();
     });
   }
 
-  private onStoreChange(): void {
-    const hasSelectedItems = this.itemRows.controls.some(
-      (row) => !!row.get('itemId')?.value,
-    );
-    if (!hasSelectedItems) {
-      return;
-    }
-
-    for (const row of this.itemRows.controls) {
-      row.patchValue({ itemId: null, itemName: '', unitPrice: null });
-    }
-    this.itemOptions = [];
+  private focusPickerQuantityInput(): void {
+    setTimeout(() => {
+      this.pickerQuantityInput?.nativeElement.focus();
+    });
   }
 
   private setupItemTypeahead(): void {
@@ -290,7 +407,7 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
       )
       .subscribe((items) => {
-        this.itemOptions = this.mergeOptions(this.selectedItemOptions(), items);
+        this.itemOptions = this.mergeOptions(this.selectedPickerItem(), items);
       });
   }
 
@@ -303,10 +420,7 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
       )
       .subscribe((suppliers) => {
-        this.supplierOptions = this.mergeOptions(
-          this.selectedSupplierOptions(),
-          suppliers,
-        );
+        this.supplierOptions = this.mergeOptions(this.selectedSupplierOptions(), suppliers);
       });
   }
 
@@ -323,22 +437,27 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
         const defaultStoreId = this.defaultStoreId();
         if (defaultStoreId && !this.purchaseOrderForm.get('storeId')?.value) {
           this.purchaseOrderForm.patchValue({ storeId: defaultStoreId });
+          this.previousStoreId = defaultStoreId;
         }
       });
   }
 
   private searchItems(term: string) {
     const searchTerm = term?.trim();
+    const storeId = this.purchaseOrderForm.get('storeId')?.value as string | null;
+    if (!storeId) {
+      return of(this.selectedPickerItem());
+    }
     if (!searchTerm || searchTerm.length < 2) {
-      return of(this.selectedItemOptions());
+      return of(this.selectedPickerItem());
     }
 
     this.loadingItems = true;
     return this.itemApi
-      .searchTerm(
+      .searchTermWithStock(
         new ItemSearchDto({
           searchTerm,
-          storeId: this.purchaseOrderForm.get('storeId')?.value || undefined,
+          storeId,
           enabled: true,
         }),
       )
@@ -370,11 +489,9 @@ export class PurchaseOrderCreateComponent implements OnInit, OnDestroy {
       );
   }
 
-  private selectedItemOptions(): ItemResponse[] {
-    const selectedIds = this.itemRows.controls
-      .map((row) => row.get('itemId')?.value as string | null)
-      .filter((id): id is string => !!id);
-    return this.itemOptions.filter((item) => item.id && selectedIds.includes(item.id));
+  private selectedPickerItem(): ItemResponse[] {
+    const selectedId = this.pickerForm.get('itemId')?.value as string | null;
+    return this.itemOptions.filter((item) => item.id && item.id === selectedId);
   }
 
   private selectedSupplierOptions(): SupplierResponse[] {

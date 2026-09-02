@@ -4,7 +4,7 @@ import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
 function isAuthRequest(url: string): boolean {
-  return url.includes('/api/v1/auth/');
+  return url.includes('/api/v1/auth/') || url.includes('/api/v1/registration/');
 }
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
@@ -24,10 +24,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       if (
         error instanceof HttpErrorResponse &&
         error.status === 401 &&
-        token &&
         !isAuthRequest(req.url)
       ) {
-        authService.logout();
+        authService.sessionExpired();
       }
 
       return throwError(() => error);

@@ -1,55 +1,40 @@
-@use '../../sales/sales-form.shared';
+@use '../sales-form.shared';
 
-.picker-grid {
-  grid-template-columns: 1.6fr 0.8fr 0.8fr 0.8fr 0.7fr 0.9fr auto;
+.field-invoice {
+  grid-column: span 2;
 }
 
-.cart-table {
-  min-width: 1100px;
+.invoice-meta {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(31, 128, 84, 0.12);
+  border-radius: 0.65rem;
+  background: rgba(241, 248, 244, 0.55);
 
-  .col-uom {
-    min-width: 8rem;
-    width: 9rem;
+  .meta-label {
+    display: block;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--green-600);
   }
 
-  .col-batch {
-    min-width: 12rem;
-    width: 13.5rem;
-
-    .form-control-sm[readonly] {
-      background-color: #f7fbf8;
-      cursor: default;
-    }
+  strong {
+    font-size: 0.82rem;
+    color: var(--green-ink);
   }
+}
 
-  .col-expire {
-    width: 8.5rem;
-  }
-
-  .col-supplier {
-    min-width: 10rem;
-    width: 16%;
-  }
-
-  .form-ng-select {
-    font-size: 0.78rem;
-
-    ::ng-deep .ng-select-container {
-      min-height: 1.85rem;
-      height: 1.85rem;
-      border-color: rgba(31, 128, 84, 0.22);
-      border-radius: 0.25rem;
-    }
-
-    ::ng-deep .ng-dropdown-panel {
-      border-color: rgba(31, 128, 84, 0.22);
-      font-size: 0.78rem;
-      min-width: 16rem;
-    }
-  }
+.line-fully-returned td {
+  opacity: 0.55;
 }
 
 .form-actions {
+  display: flex;
   justify-content: flex-end;
   margin: 1rem -0.85rem -0.85rem;
   padding: 0.9rem 0.85rem 1rem;
@@ -69,8 +54,8 @@
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  min-height: 2.35rem;
-  padding: 0.45rem 1.15rem;
+  min-height: 2.45rem;
+  padding: 0.5rem 1.25rem;
   border-radius: 999px;
   border: 0;
   font-size: 0.82rem;
@@ -110,10 +95,17 @@
     box-shadow: 0 4px 12px rgba(18, 53, 40, 0.1);
     transform: translateY(-1px);
   }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
 }
 
-.btn-action-save {
-  min-width: 8rem;
+.btn-action-return {
+  min-width: 8.75rem;
   color: #fff;
   background: linear-gradient(135deg, #176643 0%, #1f8054 55%, #2a9d6a 100%);
   box-shadow:
@@ -162,47 +154,27 @@
   }
 }
 
-.btn-action-icon-save {
-  position: relative;
-  width: 0.95rem;
-  height: 0.95rem;
-
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    background: currentColor;
-    border-radius: 1px;
-  }
-
-  &::before {
-    left: 0.12rem;
-    bottom: 0.28rem;
-    width: 0.28rem;
-    height: 0.12rem;
-    transform: rotate(45deg);
-  }
-
-  &::after {
-    left: 0.24rem;
-    bottom: 0.34rem;
-    width: 0.55rem;
-    height: 0.12rem;
-    transform: rotate(-45deg);
-  }
+.btn-action-icon-return {
+  width: 1.05rem;
+  height: 1.05rem;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4.5 6.5H10a3 3 0 1 1 0 6H8' stroke='black' stroke-width='1.85' stroke-linecap='round'/%3E%3Cpath d='M7 3.5 4.25 6.5 7 9.5' stroke='black' stroke-width='1.85' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4.5 6.5H10a3 3 0 1 1 0 6H8' stroke='black' stroke-width='1.85' stroke-linecap='round'/%3E%3Cpath d='M7 3.5 4.25 6.5 7 9.5' stroke='black' stroke-width='1.85' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat center / contain;
 }
 
-@media (max-width: 1199.98px) {
-  .picker-grid {
-    grid-template-columns: 1fr 1fr 1fr;
+@media (max-width: 991.98px) {
+  .field-invoice {
+    grid-column: auto;
+  }
+
+  .invoice-meta {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (max-width: 575.98px) {
-  .picker-grid {
-    grid-template-columns: 1fr;
-  }
-
   .form-actions-inner {
     width: 100%;
   }
@@ -212,7 +184,7 @@
     min-width: 0;
   }
 
-  .btn-action-save {
+  .btn-action-return {
     min-width: 0;
   }
 }

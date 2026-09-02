@@ -9,6 +9,7 @@ export class LookupDto {
   @prop() parentId?: string;
   @prop() parentName?: string;
   @prop() parentFullName?: string;
+  @prop() enabled?: boolean;
 
   public constructor(init?: Partial<LookupDto>) {
     Object.assign(this, init);

@@ -1,0 +1,206 @@
+<div class="sales-return">
+  <div class="form-shell">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Sales Return</h1>
+        <span class="toolbar-meta">Return against invoice qty</span>
+      </div>
+    </div>
+
+    <form class="create-form" [formGroup]="returnForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field field-invoice">
+          <label for="invoiceId" class="form-label">
+            Invoice No <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="invoiceId"
+            class="form-ng-select"
+            formControlName="invoiceId"
+            placeholder="Type at least 3 characters of invoice no"
+            [clearable]="true"
+            [searchable]="true"
+            [typeahead]="invoiceTypeahead$"
+            [minTermLength]="3"
+            [loading]="loadingInvoices"
+            notFoundText="Type at least 3 characters"
+            (change)="onInvoiceChange($event)"
+            [class.is-invalid]="submitted && f['invoiceId'].invalid"
+          >
+            @for (option of invoiceOptions; track option.id) {
+              <ng-option [value]="option.id">{{ invoiceLabel(option) }}</ng-option>
+            }
+          </ng-select>
+          @if (submitted && f['invoiceId'].errors?.['required']) {
+            <div class="invalid-feedback d-block">Invoice is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="returnDate" class="form-label">
+            Return date <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="returnDate"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="returnDate"
+            bsDatepicker
+            [bsConfig]="datePickerConfig"
+            placeholder="Select date"
+            autocomplete="off"
+            [class.is-invalid]="submitted && f['returnDate'].invalid"
+          />
+        </div>
+      </div>
+
+      @if (invoice) {
+        <div class="invoice-meta">
+          <div>
+            <span class="meta-label">Date</span>
+            <strong>{{ displayDate(invoice.invoiceDate) }}</strong>
+          </div>
+          <div>
+            <span class="meta-label">Store</span>
+            <strong>{{ invoice.storeName || '—' }}</strong>
+          </div>
+          <div>
+            <span class="meta-label">Customer</span>
+            <strong>{{ invoice.customerName || 'Walk-in' }}</strong>
+          </div>
+          <div>
+            <span class="meta-label">Status</span>
+            <strong>{{ statusLabel(invoice.invoiceStatus) }}</strong>
+          </div>
+          <div>
+            <span class="meta-label">Invoice total</span>
+            <strong>{{ invoice.grandTotal | bdNumber }}</strong>
+          </div>
+        </div>
+      }
+
+      <section class="cart-section">
+        <div class="cart-header">
+          <h2 class="section-title">Invoice items</h2>
+          @if (lines.length) {
+            <span class="cart-count">{{ lines.length }} lines</span>
+          }
+        </div>
+
+        @if (loadingInvoice) {
+          <div class="cart-empty">Loading invoice items…</div>
+        } @else if (!invoice) {
+          <div class="cart-empty">Search and select an invoice to load items.</div>
+        } @else if (lines.length === 0) {
+          <div class="cart-empty">No items found on this invoice.</div>
+        } @else {
+          <div class="cart-table-wrap">
+            <table class="cart-table">
+              <thead>
+                <tr>
+                  <th class="col-item">Item</th>
+                  <th class="col-qty">Invoice qty</th>
+                  <th class="col-rate">Rate</th>
+                  <th class="col-discount">Discount</th>
+                  <th class="col-vat">VAT</th>
+                  <th class="col-tax">Tax</th>
+                  <th class="col-line">Line total</th>
+                  <th class="col-qty">Return qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (line of lines; track line.invoiceItemId; let i = $index) {
+                  <tr [class.line-fully-returned]="line.invoiceQty <= 0">
+                    <td class="col-item">
+                      <div class="cart-item-name">{{ line.itemName }}</div>
+                      @if (line.itemCode) {
+                        <div class="cart-item-code">{{ line.itemCode }}</div>
+                      }
+                    </td>
+                    <td class="col-qty">{{ line.invoiceQty | bdNumber }}</td>
+                    <td class="col-rate">{{ line.unitPrice | bdNumber }}</td>
+                    <td class="col-discount">{{ line.discountAmount | bdNumber }}</td>
+                    <td class="col-vat">{{ line.vatAmount | bdNumber }}</td>
+                    <td class="col-tax">{{ line.taxAmount | bdNumber }}</td>
+                    <td class="col-line">
+                      <span class="line-total">{{ line.lineTotal | bdNumber }}</span>
+                    </td>
+                    <td class="col-qty">
+                      <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        [ngModel]="line.returnQty"
+                        (ngModelChange)="onReturnQtyChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        min="0"
+                        step="0.01"
+                        [max]="line.invoiceQty"
+                        [disabled]="line.invoiceQty <= 0"
+                        [attr.aria-label]="'Return quantity for ' + line.itemName"
+                      />
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <div class="summary-grid">
+        <section class="totals-card">
+          <div class="totals-row">
+            <span>Return sub total</span>
+            <strong>{{ returnTotals.subTotal | bdNumber }}</strong>
+          </div>
+          <div class="totals-row">
+            <span>Discount</span>
+            <strong>{{ returnTotals.discountAmount | bdNumber }}</strong>
+          </div>
+          <div class="totals-row">
+            <span>VAT</span>
+            <strong>{{ returnTotals.vatAmount | bdNumber }}</strong>
+          </div>
+          <div class="totals-row">
+            <span>Tax</span>
+            <strong>{{ returnTotals.taxAmount | bdNumber }}</strong>
+          </div>
+          <div class="totals-row totals-grand">
+            <span>Refund amount</span>
+            <strong>{{ returnTotals.refundAmount | bdNumber }}</strong>
+          </div>
+        </section>
+      </div>
+
+      <div class="form-actions">
+        <div class="form-actions-inner">
+          <button type="button" class="btn-action btn-action-clear" (click)="onClear()" [disabled]="submitting">
+            <span class="btn-action-icon btn-action-icon-clear" aria-hidden="true"></span>
+            <span class="btn-action-label">Clear</span>
+          </button>
+          <button
+            type="submit"
+            class="btn-action btn-action-return"
+            [disabled]="submitting || loadingInvoice || selectedReturnQty <= 0"
+          >
+            <span class="btn-action-icon btn-action-icon-return" aria-hidden="true"></span>
+            <span class="btn-action-label">{{ submitting ? 'Saving…' : 'Return' }}</span>
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <app-confirm-dialog
+    [open]="confirmOpen"
+    [danger]="false"
+    title="Save sales return"
+    [message]="confirmMessage"
+    [detail]="confirmDetail"
+    confirmLabel="Return"
+    cancelLabel="Cancel"
+    [busy]="submitting"
+    (confirmed)="confirmReturn()"
+    (cancelled)="cancelReturn()"
+  />
+</div>

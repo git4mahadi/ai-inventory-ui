@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, ValidatorFn, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import {
@@ -58,10 +58,15 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     showWeekNumbers: false,
     customTodayClass: 'bs-datepicker-today',
   };
+  readonly expireDatePickerConfig: Partial<BsDatepickerConfig> = {
+    ...this.datePickerConfig,
+    startView: 'year',
+  };
 
   storeOptions: StoreResponse[] = [];
   supplierOptions: SupplierResponse[] = [];
   purchaseOrderOptions: PurchaseOrderResponse[] = [];
+  purchaseOrderItems: PurchaseOrderItemResponse[] = [];
   itemOptions: ItemResponse[] = [];
   packSizeOptions: LookupResponse[] = [];
 
@@ -81,6 +86,31 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private applyingPurchaseOrder = false;
   private purchaseOrderRequestVersion = 0;
+  private readonly receivedQtyAgainstPoValidator: ValidatorFn = (control) => {
+    if (!(control instanceof FormArray) || !this.purchaseOrderItems.length) {
+      return null;
+    }
+
+    const receivedByItem = new Map<string, number>();
+    for (const row of control.controls) {
+      const itemId = row.get('itemId')?.value as string | null;
+      if (!itemId) {
+        continue;
+      }
+      receivedByItem.set(
+        itemId,
+        (receivedByItem.get(itemId) || 0) + Number(row.get('receivedQty')?.value || 0),
+      );
+    }
+
+    for (const [itemId, received] of receivedByItem) {
+      const ordered = this.orderedQtyForItem(itemId);
+      if (ordered == null || received > ordered) {
+        return { receivedQtyExceedsPo: true };
+      }
+    }
+    return null;
+  };
 
   constructor(
     private readonly formBuilder: FormBuilder,
@@ -99,7 +129,10 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
       storeId: [{ value: null as string | null, disabled: true }, Validators.required],
       supplierId: [{ value: null as string | null, disabled: true }, Validators.required],
       receiveDate: [null as Date | null, Validators.required],
-      items: this.formBuilder.array([this.createItemGroup()]),
+      items: this.formBuilder.array(
+        [this.createItemGroup()],
+        this.receivedQtyAgainstPoValidator,
+      ),
     });
   }
 
@@ -195,6 +228,7 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
       typeof selected === 'string' ? selected : selected?.id ?? null;
     if (!purchaseOrderId) {
       this.applyingPurchaseOrder = false;
+      this.purchaseOrderItems = [];
       this.receiveForm.patchValue({ storeId: null, supplierId: null });
       this.replaceItemRows([]);
       return;
@@ -233,10 +267,12 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     const itemId = typeof selected === 'string' ? selected : selected?.id ?? null;
     if (!itemId) {
       this.itemRow(index).patchValue({ itemName: '', unitPrice: null, uom: null });
+      this.syncReceivedQtyMaxValidators();
       return;
     }
 
     const row = this.itemRow(index);
+    this.syncReceivedQtyMaxValidators();
     this.itemApi
       .getItemById(itemId)
       .pipe(takeUntil(this.destroy$))
@@ -254,6 +290,7 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
             batchNo: row.get('batchNo')?.value || this.nextBatchNo(),
           });
           this.ensurePackSizeOption(item.packSizeId, item.packSizeName);
+          this.syncReceivedQtyMaxValidators();
         },
       });
   }
@@ -264,8 +301,11 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
       this.toastr.error('Only draft receives can be updated');
       return;
     }
+    this.receiveForm.markAllAsTouched();
     if (this.receiveForm.invalid || this.loading || !this.receiveId) {
-      this.receiveForm.markAllAsTouched();
+      if (this.receivedQtyExceedsPurchaseOrder()) {
+        this.toastr.error('Received quantity cannot exceed purchase order quantity');
+      }
       return;
     }
 
@@ -345,9 +385,9 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
       }
     }
 
-    this.ensureSelectedPurchaseOrder(record.purchaseOrderId);
     this.ensureSelectedStore(record.storeId);
     this.ensureSelectedSupplier(record.supplierId);
+    this.loadPurchaseOrderLimits(record.purchaseOrderId);
     this.syncUomSelections();
     this.syncFormEnabledState();
   }
@@ -358,7 +398,7 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
       itemName: [item?.itemName ?? ''],
       receivedQty: [
         item?.receivedQty ?? null,
-        [Validators.required, Validators.min(0.01)],
+        this.receivedQtyValidators(item?.itemId ?? null),
       ],
       rejectedQty: [item?.rejectedQty ?? null, [Validators.min(0)]],
       unitPrice: [item?.unitPrice ?? null, [Validators.required, Validators.min(0)]],
@@ -398,8 +438,20 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     });
   }
 
+  maxReceivedQtyFor(itemId: string | null | undefined): number | null {
+    return this.orderedQtyForItem(itemId);
+  }
+
+  receivedQtyExceedsPurchaseOrder(): boolean {
+    return (
+      !!this.itemRows.errors?.['receivedQtyExceedsPo'] ||
+      this.itemRows.controls.some((row) => !!row.get('receivedQty')?.errors?.['max'])
+    );
+  }
+
   private applyPurchaseOrder(order: PurchaseOrderResponse): void {
     this.purchaseOrderOptions = this.mergeOptions(this.purchaseOrderOptions, [order]);
+    this.purchaseOrderItems = order.items ?? [];
     this.receiveForm.patchValue({
       storeId: order.storeId ?? null,
       supplierId: order.supplierId ?? null,
@@ -633,18 +685,20 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     }
   }
 
-  private ensureSelectedPurchaseOrder(purchaseOrderId?: string): void {
-    if (
-      !purchaseOrderId ||
-      this.purchaseOrderOptions.some((order) => order.id === purchaseOrderId)
-    ) {
+  private loadPurchaseOrderLimits(purchaseOrderId?: string): void {
+    if (!purchaseOrderId) {
+      this.purchaseOrderItems = [];
+      this.syncReceivedQtyMaxValidators();
       return;
     }
     this.purchaseOrderApi.getPurchaseOrderById(purchaseOrderId).subscribe({
       next: (order) => {
-        if (order?.id) {
-          this.purchaseOrderOptions = this.mergeOptions(this.purchaseOrderOptions, [order]);
+        if (!order?.id) {
+          return;
         }
+        this.purchaseOrderOptions = this.mergeOptions(this.purchaseOrderOptions, [order]);
+        this.purchaseOrderItems = order.items ?? [];
+        this.syncReceivedQtyMaxValidators();
       },
     });
   }
@@ -690,6 +744,36 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
       keys.add(key);
     }
     return false;
+  }
+
+  private receivedQtyValidators(itemId: string | null): ValidatorFn[] {
+    const validators: ValidatorFn[] = [Validators.required, Validators.min(0.01)];
+    const ordered = this.orderedQtyForItem(itemId);
+    if (ordered != null) {
+      validators.push(Validators.max(ordered));
+    }
+    return validators;
+  }
+
+  private orderedQtyForItem(itemId: string | null | undefined): number | null {
+    if (!itemId || !this.purchaseOrderItems.length) {
+      return null;
+    }
+    const matching = this.purchaseOrderItems.filter((item) => item.itemId === itemId);
+    if (!matching.length) {
+      return null;
+    }
+    return matching.reduce((sum, item) => sum + Number(item.orderedQty || 0), 0);
+  }
+
+  private syncReceivedQtyMaxValidators(): void {
+    for (const row of this.itemRows.controls) {
+      const itemId = row.get('itemId')?.value as string | null;
+      const ctrl = row.get('receivedQty');
+      ctrl?.setValidators(this.receivedQtyValidators(itemId));
+      ctrl?.updateValueAndValidity({ emitEvent: false });
+    }
+    this.itemRows.updateValueAndValidity({ emitEvent: false });
   }
 
   private syncFormEnabledState(): void {

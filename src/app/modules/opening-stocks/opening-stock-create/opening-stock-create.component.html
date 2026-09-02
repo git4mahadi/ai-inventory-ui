@@ -20,7 +20,7 @@
             id="storeId"
             class="form-ng-select"
             formControlName="storeId"
-            placeholder="Select store..."
+            placeholder="Select store"
             [clearable]="false"
             [searchable]="true"
             [loading]="loadingStores"
@@ -43,7 +43,7 @@
             id="financialYearId"
             class="form-ng-select"
             formControlName="financialYearId"
-            placeholder="Select financial year..."
+            placeholder="Select financial year"
             [clearable]="false"
             [searchable]="true"
             [loading]="loadingFinancialYears"
@@ -90,177 +90,268 @@
         </div>
       </div>
 
-      <div class="items-section">
-        <div class="items-header">
-          <h2 class="items-title">Items</h2>
-          <button
-            type="button"
-            class="icon-action icon-add-line"
-            title="Add line"
-            aria-label="Add line"
-            (click)="addItemRow()"
-          >
-            <span class="icon-graphic" aria-hidden="true"></span>
-          </button>
+      <section class="picker-card" [formGroup]="pickerForm">
+        <div class="picker-header">
+          <h2 class="section-title">Add item</h2>
+          <span class="picker-hint">Search by name or code. Stock is shown for the selected store.</span>
         </div>
-
-        <div class="items-table-wrap">
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>Item <span class="required-mark" aria-hidden="true">*</span></th>
-                <th>Qty <span class="required-mark" aria-hidden="true">*</span></th>
-                <th>UOM</th>
-                <th>Batch <span class="required-mark" aria-hidden="true">*</span></th>
-                <th>Expire</th>
-                <th>Purchase <span class="required-mark" aria-hidden="true">*</span></th>
-                <th>Sales <span class="required-mark" aria-hidden="true">*</span></th>
-                <th>Supplier</th>
-                <th class="col-remove"></th>
-              </tr>
-            </thead>
-            <tbody formArrayName="items">
-              @for (row of itemRows.controls; track $index) {
-                <tr [formGroupName]="$index">
-                  <td class="col-item">
-                    <ng-select
-                      class="form-ng-select"
-                      formControlName="itemId"
-                      placeholder="Type to search..."
-                      appendTo="body"
-                      [clearable]="true"
-                      [searchable]="true"
-                      [typeahead]="itemTypeahead$"
-                      [minTermLength]="2"
-                      [loading]="loadingItems"
-                      notFoundText="Type at least 2 characters"
-                      (change)="onItemChange($index, $event)"
-                      [class.is-invalid]="submitted && itemRow($index).controls['itemId'].invalid"
-                    >
-                      @for (item of itemOptions; track item.id) {
-                        <ng-option [value]="item.id">{{ itemLabel(item) }}</ng-option>
-                      }
-                    </ng-select>
-                  </td>
-                  <td class="col-qty">
-                    <input
-                      type="text"
-                      min="0.01"
-                      step="0.01"
-                      class="form-control form-control-sm"
-                      formControlName="stockQty"
-                      [class.is-invalid]="submitted && itemRow($index).controls['stockQty'].invalid"
-                    />
-                  </td>
-                  <td class="col-uom">
-                    <ng-select
-                      class="form-ng-select"
-                      formControlName="uom"
-                      placeholder="Select UOM..."
-                      appendTo="body"
-                      [clearable]="true"
-                      [searchable]="true"
-                      [loading]="loadingLookups"
-                    >
-                      @for (lookup of packSizeOptions; track lookup.id) {
-                        <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
-                      }
-                    </ng-select>
-                  </td>
-                  <td class="col-batch">
-                    <input
-                      type="text"
-                      class="form-control form-control-sm"
-                      formControlName="batchNo"
-                      readonly
-                      title="Auto-generated batch number"
-                      [class.is-invalid]="submitted && itemRow($index).controls['batchNo'].invalid"
-                    />
-                  </td>
-                  <td class="col-expire">
-                    <input
-                      type="text"
-                      class="form-control form-control-sm"
-                      formControlName="expireDate"
-                      bsDatepicker
-                      [bsConfig]="datePickerConfig"
-                      placeholder="Date"
-                      autocomplete="off"
-                    />
-                  </td>
-                  <td class="col-rate">
-                    <input
-                      type="text"
-                      min="0"
-                      step="0.01"
-                      class="form-control form-control-sm"
-                      formControlName="purchaseRate"
-                      [class.is-invalid]="submitted && itemRow($index).controls['purchaseRate'].invalid"
-                    />
-                  </td>
-                  <td class="col-rate">
-                    <input
-                      type="text"
-                      min="0"
-                      step="0.01"
-                      class="form-control form-control-sm"
-                      formControlName="salesRate"
-                      [class.is-invalid]="submitted && itemRow($index).controls['salesRate'].invalid"
-                    />
-                  </td>
-                  <td class="col-supplier">
-                    <ng-select
-                      class="form-ng-select"
-                      formControlName="supplierId"
-                      placeholder="Type to search..."
-                      appendTo="body"
-                      [clearable]="true"
-                      [searchable]="true"
-                      [typeahead]="supplierTypeahead$"
-                      [minTermLength]="3"
-                      [loading]="loadingSuppliers"
-                      notFoundText="Type at least 3 characters"
-                    >
-                      @for (supplier of supplierOptions; track supplier.id) {
-                        <ng-option [value]="supplier.id">{{ supplierLabel(supplier) }}</ng-option>
-                      }
-                    </ng-select>
-                  </td>
-                  <td class="col-remove">
-                    <button
-                      type="button"
-                      class="icon-action icon-delete"
-                      title="Remove line"
-                      aria-label="Remove line"
-                      [disabled]="itemRows.length <= 1"
-                      (click)="removeItemRow($index)"
-                    >
-                      <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
-                    </button>
-                  </td>
-                </tr>
+        <div class="picker-grid">
+          <div class="field picker-item">
+            <label for="pickerItemId" class="form-label">Item</label>
+            <ng-select
+              #pickerItemSelect
+              id="pickerItemId"
+              class="form-ng-select"
+              formControlName="itemId"
+              placeholder="Type at least 2 characters"
+              [clearable]="true"
+              [searchable]="true"
+              [typeahead]="itemTypeahead$"
+              [minTermLength]="2"
+              [loading]="loadingItems"
+              notFoundText="Type at least 2 characters"
+              (change)="onPickerItemChange($event)"
+            >
+              @for (item of itemOptions; track item.id) {
+                <ng-option [value]="item.id">
+                  <span class="item-option">
+                    <span class="item-option-name">{{ itemLabel(item) }}</span>
+                    <span class="item-option-stock">Stock {{ itemStock(item) | bdNumber }}</span>
+                  </span>
+                </ng-option>
               }
-            </tbody>
-          </table>
+            </ng-select>
+          </div>
+          <div class="field">
+            <label class="form-label">Purchase rate</label>
+            <input type="text" class="form-control form-control-sm" formControlName="purchaseRate" readonly />
+          </div>
+          <div class="field">
+            <label class="form-label">Sales rate</label>
+            <input type="text" class="form-control form-control-sm" formControlName="salesRate" readonly />
+          </div>
+          <div class="field">
+            <label class="form-label">Current stock</label>
+            <input type="text" class="form-control form-control-sm" formControlName="currentStock" readonly />
+          </div>
+          <div class="field">
+            <label class="form-label">Quantity</label>
+            <input
+              #pickerQuantityInput
+              type="number"
+              class="form-control form-control-sm"
+              formControlName="quantity"
+              min="0"
+              step="0.01"
+              placeholder="Qty"
+              (keydown.enter)="onPickerQuantityEnter($event)"
+            />
+          </div>
+          <div class="field">
+            <label class="form-label">Expire</label>
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              formControlName="expireDate"
+              bsDatepicker
+              [bsConfig]="expireDatePickerConfig"
+              placeholder="Date"
+              autocomplete="off"
+            />
+          </div>
+          <div class="picker-action">
+            <button
+              type="button"
+              class="btn-picker-add"
+              title="Add to cart"
+              aria-label="Add item to cart"
+              (click)="addPickerItem()"
+            >
+              <span class="btn-picker-add-icon" aria-hidden="true"></span>
+              <span class="btn-picker-add-label">Add</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="cart-section">
+        <div class="cart-header">
+          <h2 class="section-title">Cart</h2>
+          <span class="cart-count">{{ cartItems.length | bdNumber: 0 }} item{{ cartItems.length === 1 ? '' : 's' }}</span>
         </div>
 
-        @if (submitted && itemRows.invalid) {
-          <div class="items-error">Each line needs item, quantity, batch, purchase rate, and sales rate.</div>
+        @if (cartItems.length === 0) {
+          <div class="cart-empty">Search and add items to build this opening stock.</div>
+        } @else {
+          <div class="cart-table-wrap">
+            <table class="cart-table">
+              <thead>
+                <tr>
+                  <th class="col-item">Item</th>
+                  <th class="col-qty">Qty</th>
+                  <th class="col-uom">UOM</th>
+                  <th class="col-batch">Batch</th>
+                  <th class="col-expire">Expire</th>
+                  <th class="col-rate">Purchase</th>
+                  <th class="col-rate">Sales</th>
+                  <th class="col-supplier">Supplier</th>
+                  <th class="col-line">Line total</th>
+                  <th class="col-remove"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of cartItems; track item.lineId; let i = $index) {
+                  <tr>
+                    <td class="col-item">
+                      <div class="cart-item-name">{{ item.itemName }}</div>
+                      @if (item.itemCode) {
+                        <div class="cart-item-code">{{ item.itemCode }}</div>
+                      }
+                    </td>
+                    <td class="col-qty">
+                      <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.stockQty"
+                        (ngModelChange)="onCartQtyChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        min="0.01"
+                        step="0.01"
+                      />
+                    </td>
+                    <td class="col-uom">
+                      <ng-select
+                        class="form-ng-select"
+                        [ngModel]="item.uomId"
+                        (ngModelChange)="onCartUomChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        placeholder="UOM"
+                        appendTo="body"
+                        [clearable]="true"
+                        [searchable]="true"
+                        [loading]="loadingLookups"
+                      >
+                        @for (lookup of packSizeOptions; track lookup.id) {
+                          <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
+                        }
+                      </ng-select>
+                    </td>
+                    <td class="col-batch">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.batchNo"
+                        [ngModelOptions]="{ standalone: true }"
+                        readonly
+                        title="Auto-generated batch number"
+                      />
+                    </td>
+                    <td class="col-expire">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.expireDate"
+                        (ngModelChange)="onCartExpireChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        bsDatepicker
+                        [bsConfig]="expireDatePickerConfig"
+                        placeholder="Date"
+                        autocomplete="off"
+                      />
+                    </td>
+                    <td class="col-rate">
+                      <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.purchaseRate"
+                        (ngModelChange)="onCartRateChange(i, 'purchaseRate', $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        min="0"
+                        step="0.01"
+                      />
+                    </td>
+                    <td class="col-rate">
+                      <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.salesRate"
+                        (ngModelChange)="onCartRateChange(i, 'salesRate', $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        min="0"
+                        step="0.01"
+                      />
+                    </td>
+                    <td class="col-supplier">
+                      <ng-select
+                        class="form-ng-select"
+                        [ngModel]="item.supplierId"
+                        (ngModelChange)="onCartSupplierChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        placeholder="Type to search"
+                        appendTo="body"
+                        [clearable]="true"
+                        [searchable]="true"
+                        [typeahead]="supplierTypeahead$"
+                        [minTermLength]="3"
+                        [loading]="loadingSuppliers"
+                        notFoundText="Type at least 3 characters"
+                      >
+                        @for (supplier of supplierOptions; track supplier.id) {
+                          <ng-option [value]="supplier.id">{{ supplierLabel(supplier) }}</ng-option>
+                        }
+                      </ng-select>
+                    </td>
+                    <td class="col-line">
+                      <span class="line-total">{{ linePurchaseTotal(item) | bdNumber }}</span>
+                    </td>
+                    <td class="col-remove">
+                      <button
+                        type="button"
+                        class="icon-action icon-delete"
+                        title="Remove item"
+                        aria-label="Remove item"
+                        (click)="removeCartItem(i)"
+                      >
+                        <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         }
 
-        <div class="items-total">
-          <span class="items-total-label">Purchase total</span>
-          <span class="items-total-value">{{ itemsTotal | bdNumber }}</span>
-        </div>
+        @if (submitted && cartItems.length === 0) {
+          <div class="items-error">Add at least one item.</div>
+        }
+      </section>
+
+      <div class="summary-grid">
+        <div></div>
+        <section class="totals-card">
+          <div class="totals-row">
+            <span>Sales total</span>
+            <strong>{{ salesTotal | bdNumber }}</strong>
+          </div>
+          <div class="totals-row totals-grand">
+            <span>Purchase total</span>
+            <strong>{{ purchaseTotal | bdNumber }}</strong>
+          </div>
+        </section>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn btn-outline-green btn-sm" (click)="onClear()">
-          Clear
-        </button>
-        <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">
-          {{ loading ? 'Saving...' : 'Save' }}
-        </button>
+        <div class="form-actions-inner">
+          <button type="button" class="btn-action btn-action-clear" (click)="onClear()">
+            <span class="btn-action-icon btn-action-icon-clear" aria-hidden="true"></span>
+            <span class="btn-action-label">Clear</span>
+          </button>
+          <button type="submit" class="btn-action btn-action-save" [disabled]="loading">
+            <span class="btn-action-icon btn-action-icon-save" aria-hidden="true"></span>
+            <span class="btn-action-label">{{ loading ? 'Saving...' : 'Save' }}</span>
+          </button>
+        </div>
       </div>
     </form>
   </div>

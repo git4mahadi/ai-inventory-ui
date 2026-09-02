@@ -20,7 +20,7 @@
             id="storeId"
             class="form-ng-select"
             formControlName="storeId"
-            placeholder="Select store..."
+            placeholder="Select store"
             [clearable]="false"
             [searchable]="true"
             [loading]="loadingStores"
@@ -43,7 +43,7 @@
             id="supplierId"
             class="form-ng-select"
             formControlName="supplierId"
-            placeholder="Type to search..."
+            placeholder="Type at least 3 characters"
             [clearable]="true"
             [searchable]="true"
             [typeahead]="supplierTypeahead$"
@@ -94,58 +94,6 @@
             autocomplete="off"
           />
         </div>
-
-        <div class="field">
-          <label for="discountAmount" class="form-label">Discount</label>
-          <input
-            id="discountAmount"
-            type="text"
-            min="0"
-            step="0.01"
-            class="form-control form-control-sm"
-            formControlName="discountAmount"
-            placeholder="0"
-          />
-        </div>
-
-        <div class="field">
-          <label for="taxAmount" class="form-label">Tax</label>
-          <input
-            id="taxAmount"
-            type="text"
-            min="0"
-            step="0.01"
-            class="form-control form-control-sm"
-            formControlName="taxAmount"
-            placeholder="0"
-          />
-        </div>
-
-        <div class="field">
-          <label for="shippingCharge" class="form-label">Shipping</label>
-          <input
-            id="shippingCharge"
-            type="text"
-            min="0"
-            step="0.01"
-            class="form-control form-control-sm"
-            formControlName="shippingCharge"
-            placeholder="0"
-          />
-        </div>
-
-        <div class="field">
-          <label for="otherCharge" class="form-label">Other charge</label>
-          <input
-            id="otherCharge"
-            type="text"
-            min="0"
-            step="0.01"
-            class="form-control form-control-sm"
-            formControlName="otherCharge"
-            placeholder="0"
-          />
-        </div>
       </div>
 
       <div class="field field-full">
@@ -159,147 +107,287 @@
         />
       </div>
 
-      <div class="items-section">
-        <div class="items-header">
-          <h2 class="items-title">Items</h2>
-          <button
-            type="button"
-            class="icon-action icon-add-line"
-            title="Add line"
-            aria-label="Add line"
-            (click)="addItemRow()"
-          >
-            <span class="icon-graphic" aria-hidden="true"></span>
-          </button>
+      <section class="picker-card" [formGroup]="pickerForm">
+        <div class="picker-header">
+          <h2 class="section-title">Add item</h2>
+          <span class="picker-hint">Search by name or code. Stock is shown for the selected store.</span>
         </div>
-
-        <div class="items-table-wrap">
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>Item <span class="required-mark" aria-hidden="true">*</span></th>
-                <th>Qty <span class="required-mark" aria-hidden="true">*</span></th>
-                <th>Unit price <span class="required-mark" aria-hidden="true">*</span></th>
-                <th>Disc %</th>
-                <th>Tax %</th>
-                <th>Line total</th>
-                <th>Remarks</th>
-                <th class="col-remove"></th>
-              </tr>
-            </thead>
-            <tbody formArrayName="items">
-              @for (row of itemRows.controls; track $index) {
-                <tr [formGroupName]="$index">
-                  <td class="col-item">
-                    <ng-select
-                      class="form-ng-select"
-                      formControlName="itemId"
-                      placeholder="Type to search..."
-                      appendTo="body"
-                      [clearable]="true"
-                      [searchable]="true"
-                      [typeahead]="itemTypeahead$"
-                      [minTermLength]="2"
-                      [loading]="loadingItems"
-                      notFoundText="Type at least 2 characters"
-                      (change)="onItemChange($index, $event)"
-                      [class.is-invalid]="submitted && itemRow($index).controls['itemId'].invalid"
-                    >
-                      @for (item of itemOptions; track item.id) {
-                        <ng-option [value]="item.id">{{ itemLabel(item) }}</ng-option>
-                      }
-                    </ng-select>
-                  </td>
-                  <td class="col-qty">
-                    <input
-                      type="text"
-                      min="0.01"
-                      step="0.01"
-                      class="form-control form-control-sm"
-                      formControlName="orderedQty"
-                      [class.is-invalid]="submitted && itemRow($index).controls['orderedQty'].invalid"
-                    />
-                  </td>
-                  <td class="col-rate">
-                    <input
-                      type="text"
-                      min="0"
-                      step="0.01"
-                      class="form-control form-control-sm"
-                      formControlName="unitPrice"
-                      [class.is-invalid]="submitted && itemRow($index).controls['unitPrice'].invalid"
-                    />
-                  </td>
-                  <td class="col-pct">
-                    <input
-                      type="text"
-                      min="0"
-                      step="0.01"
-                      class="form-control form-control-sm"
-                      formControlName="discountPercent"
-                    />
-                  </td>
-                  <td class="col-pct">
-                    <input
-                      type="text"
-                      min="0"
-                      step="0.01"
-                      class="form-control form-control-sm"
-                      formControlName="taxPercent"
-                    />
-                  </td>
-                  <td class="col-line">
-                    <span class="line-total">{{ lineTotalAt($index) | bdNumber }}</span>
-                  </td>
-                  <td class="col-remarks">
-                    <input
-                      type="text"
-                      class="form-control form-control-sm"
-                      formControlName="remarks"
-                      placeholder="Optional"
-                    />
-                  </td>
-                  <td class="col-remove">
-                    <button
-                      type="button"
-                      class="icon-action icon-delete"
-                      title="Remove line"
-                      aria-label="Remove line"
-                      [disabled]="itemRows.length <= 1"
-                      (click)="removeItemRow($index)"
-                    >
-                      <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
-                    </button>
-                  </td>
-                </tr>
+        <div class="picker-grid">
+          <div class="field picker-item">
+            <label for="pickerItemId" class="form-label">Item</label>
+            <ng-select
+              #pickerItemSelect
+              id="pickerItemId"
+              class="form-ng-select"
+              formControlName="itemId"
+              placeholder="Type at least 2 characters"
+              [clearable]="true"
+              [searchable]="true"
+              [typeahead]="itemTypeahead$"
+              [minTermLength]="2"
+              [loading]="loadingItems"
+              notFoundText="Type at least 2 characters"
+              (change)="onPickerItemChange($event)"
+            >
+              @for (item of itemOptions; track item.id) {
+                <ng-option [value]="item.id">
+                  <span class="item-option">
+                    <span class="item-option-name">{{ itemLabel(item) }}</span>
+                    <span class="item-option-stock">Stock {{ itemStock(item) | bdNumber }}</span>
+                  </span>
+                </ng-option>
               }
-            </tbody>
-          </table>
+            </ng-select>
+          </div>
+          <div class="field">
+            <label class="form-label">Purchase rate</label>
+            <input type="text" class="form-control form-control-sm" formControlName="purchaseRate" readonly />
+          </div>
+          <div class="field">
+            <label class="form-label">Sales rate</label>
+            <input type="text" class="form-control form-control-sm" formControlName="salesRate" readonly />
+          </div>
+          <div class="field">
+            <label class="form-label">Current stock</label>
+            <input type="text" class="form-control form-control-sm" formControlName="currentStock" readonly />
+          </div>
+          <div class="field">
+            <label class="form-label">Quantity</label>
+            <input
+              #pickerQuantityInput
+              type="number"
+              class="form-control form-control-sm"
+              formControlName="quantity"
+              min="0"
+              step="0.01"
+              placeholder="Qty"
+              (keydown.enter)="onPickerQuantityEnter($event)"
+            />
+          </div>
+          <div class="picker-action">
+            <button
+              type="button"
+              class="btn-picker-add"
+              title="Add to cart"
+              aria-label="Add item to cart"
+              (click)="addPickerItem()"
+            >
+              <span class="btn-picker-add-icon" aria-hidden="true"></span>
+              <span class="btn-picker-add-label">Add</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="cart-section">
+        <div class="cart-header">
+          <h2 class="section-title">Cart</h2>
+          <span class="cart-count">{{ cartItems.length | bdNumber: 0 }} item{{ cartItems.length === 1 ? '' : 's' }}</span>
         </div>
 
-        @if (submitted && itemRows.invalid) {
-          <div class="items-error">Each line needs item, quantity, and unit price.</div>
+        @if (cartItems.length === 0) {
+          <div class="cart-empty">Search and add items to build this purchase order.</div>
+        } @else {
+          <div class="cart-table-wrap">
+            <table class="cart-table">
+              <thead>
+                <tr>
+                  <th class="col-item">Item</th>
+                  <th class="col-stock">Stock</th>
+                  <th class="col-qty">Qty</th>
+                  <th class="col-rate">Unit price</th>
+                  <th class="col-discount">Disc %</th>
+                  <th class="col-discount">Tax %</th>
+                  <th class="col-line">Line total</th>
+                  <th class="col-remarks">Remarks</th>
+                  <th class="col-remove"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of cartItems; track item.itemId; let i = $index) {
+                  <tr>
+                    <td class="col-item">
+                      <div class="cart-item-name">{{ item.itemName }}</div>
+                      @if (item.itemCode) {
+                        <div class="cart-item-code">{{ item.itemCode }}</div>
+                      }
+                    </td>
+                    <td class="col-stock">{{ item.currentStock | bdNumber }}</td>
+                    <td class="col-qty">
+                      <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.orderedQty"
+                        (ngModelChange)="onCartQtyChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        min="0.01"
+                        step="0.01"
+                      />
+                    </td>
+                    <td class="col-rate">
+                      <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.unitPrice"
+                        (ngModelChange)="onCartPriceChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        min="0"
+                        step="0.01"
+                      />
+                    </td>
+                    <td class="col-discount">
+                      <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.discountPercent"
+                        (ngModelChange)="onCartPercentChange(i, 'discountPercent', $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        min="0"
+                        step="0.01"
+                      />
+                    </td>
+                    <td class="col-discount">
+                      <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.taxPercent"
+                        (ngModelChange)="onCartPercentChange(i, 'taxPercent', $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        min="0"
+                        step="0.01"
+                      />
+                    </td>
+                    <td class="col-line">
+                      <span class="line-total">{{ lineTotal(item) | bdNumber }}</span>
+                    </td>
+                    <td class="col-remarks">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.remarks"
+                        (ngModelChange)="onCartRemarksChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        placeholder="Optional"
+                      />
+                    </td>
+                    <td class="col-remove">
+                      <button
+                        type="button"
+                        class="icon-action icon-delete"
+                        title="Remove item"
+                        aria-label="Remove item"
+                        (click)="removeCartItem(i)"
+                      >
+                        <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         }
 
-        <div class="totals-panel">
+        @if (submitted && cartItems.length === 0) {
+          <div class="items-error">Add at least one item.</div>
+        }
+      </section>
+
+      <div class="summary-grid">
+        <section class="discount-card">
+          <h2 class="section-title">Charges</h2>
+          <p class="picker-hint">Applied to the order total after line items.</p>
+          <div class="discount-fields">
+            <div class="field">
+              <label class="form-label" for="discountAmount">Discount</label>
+              <input
+                id="discountAmount"
+                type="number"
+                class="form-control form-control-sm"
+                formControlName="discountAmount"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+              />
+            </div>
+            <div class="field">
+              <label class="form-label" for="taxAmount">Tax</label>
+              <input
+                id="taxAmount"
+                type="number"
+                class="form-control form-control-sm"
+                formControlName="taxAmount"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+              />
+            </div>
+            <div class="field">
+              <label class="form-label" for="shippingCharge">Shipping</label>
+              <input
+                id="shippingCharge"
+                type="number"
+                class="form-control form-control-sm"
+                formControlName="shippingCharge"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+              />
+            </div>
+            <div class="field">
+              <label class="form-label" for="otherCharge">Other charge</label>
+              <input
+                id="otherCharge"
+                type="number"
+                class="form-control form-control-sm"
+                formControlName="otherCharge"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section class="totals-card">
           <div class="totals-row">
-            <span>Subtotal</span>
+            <span>Sub total</span>
             <strong>{{ subTotal | bdNumber }}</strong>
+          </div>
+          <div class="totals-row">
+            <span>Discount</span>
+            <strong>{{ (f['discountAmount'].value || 0) | bdNumber }}</strong>
+          </div>
+          <div class="totals-row">
+            <span>Tax</span>
+            <strong>{{ (f['taxAmount'].value || 0) | bdNumber }}</strong>
+          </div>
+          <div class="totals-row">
+            <span>Shipping</span>
+            <strong>{{ (f['shippingCharge'].value || 0) | bdNumber }}</strong>
+          </div>
+          <div class="totals-row">
+            <span>Other</span>
+            <strong>{{ (f['otherCharge'].value || 0) | bdNumber }}</strong>
           </div>
           <div class="totals-row totals-grand">
             <span>Grand total</span>
             <strong>{{ grandTotal | bdNumber }}</strong>
           </div>
-        </div>
+        </section>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn btn-outline-green btn-sm" (click)="onClear()">
-          Clear
-        </button>
-        <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">
-          {{ loading ? 'Saving...' : 'Save' }}
-        </button>
+        <div class="form-actions-inner">
+          <button type="button" class="btn-action btn-action-clear" (click)="onClear()">
+            <span class="btn-action-icon btn-action-icon-clear" aria-hidden="true"></span>
+            <span class="btn-action-label">Clear</span>
+          </button>
+          <button type="submit" class="btn-action btn-action-save" [disabled]="loading">
+            <span class="btn-action-icon btn-action-icon-save" aria-hidden="true"></span>
+            <span class="btn-action-label">{{ loading ? 'Saving...' : 'Save' }}</span>
+          </button>
+        </div>
       </div>
     </form>
   </div>

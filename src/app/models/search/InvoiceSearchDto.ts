@@ -28,6 +28,7 @@ export class InvoiceSearchDto extends SearchDto {
   @prop() salesIds?: string[];
   @prop() invoiceStatus?: InvoiceStatus;
   @prop() invoiceStatusList?: InvoiceStatus[];
+  @prop() dueOnly?: boolean;
 
   public constructor(init?: Partial<InvoiceSearchDto>) {
     super();

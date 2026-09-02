@@ -64,13 +64,7 @@
 
         <div class="field">
           <label for="strength" class="form-label">Strength</label>
-          <input
-            id="strength"
-            type="text"
-            class="form-control form-control-sm"
-            formControlName="strength"
-            placeholder="Strength"
-          />
+          <input id="strength" type="text" class="form-control form-control-sm" formControlName="strength" placeholder="Strength" />
         </div>
 
         <div class="field">
@@ -111,8 +105,7 @@
             [typeahead]="supplierTypeahead$"
             [minTermLength]="3"
             [loading]="loadingSuppliers"
-            notFoundText="Type at least 3 characters"
-          >
+            notFoundText="Type at least 3 characters">
             @for (supplier of supplierOptions; track supplier.id) {
               <ng-option [value]="supplier.id">{{ supplierLabel(supplier) }}</ng-option>
             }
@@ -120,7 +113,7 @@
         </div>
 
         <div class="field">
-          <label for="packSizeId" class="form-label">Pack size</label>
+          <label for="packSizeId" class="form-label">Pack Size</label>
           <ng-select
             id="packSizeId"
             class="form-ng-select"
@@ -128,8 +121,7 @@
             placeholder="Select pack size..."
             [clearable]="true"
             [searchable]="true"
-            [loading]="loadingLookups"
-          >
+            [loading]="loadingLookups">
             @for (lookup of packSizeOptions; track lookup.id) {
               <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
             }
@@ -145,8 +137,7 @@
             placeholder="Select location..."
             [clearable]="true"
             [searchable]="true"
-            [loading]="loadingLookups"
-          >
+            [loading]="loadingLookups">
             @for (lookup of locationOptions; track lookup.id) {
               <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
             }
@@ -155,36 +146,20 @@
 
         <div class="field">
           <label for="purchaseRate" class="form-label">
-            Purchase rate <span class="required-mark" aria-hidden="true">*</span>
+            Purchase Rate <span class="required-mark" aria-hidden="true">*</span>
           </label>
-          <input
-            id="purchaseRate"
-            type="number"
-            min="0"
-            step="0.01"
-            class="form-control form-control-sm"
-            formControlName="purchaseRate"
-            [class.is-invalid]="submitted && f['purchaseRate'].invalid"
-          />
+          <input id="purchaseRate" type="number" min="0" step="0.01" class="form-control form-control-sm" formControlName="purchaseRate" [class.is-invalid]="submitted && f['purchaseRate'].invalid" />
         </div>
 
         <div class="field">
           <label for="salesRate" class="form-label">
-            Sales rate <span class="required-mark" aria-hidden="true">*</span>
+            Sales Rate <span class="required-mark" aria-hidden="true">*</span>
           </label>
-          <input
-            id="salesRate"
-            type="number"
-            min="0"
-            step="0.01"
-            class="form-control form-control-sm"
-            formControlName="salesRate"
-            [class.is-invalid]="submitted && f['salesRate'].invalid"
-          />
+          <input id="salesRate" type="number" min="0" step="0.01" class="form-control form-control-sm" formControlName="salesRate" [class.is-invalid]="submitted && f['salesRate'].invalid" />
         </div>
 
         <div class="field">
-          <label for="reOrderLevel" class="form-label">Re-order level</label>
+          <label for="reOrderLevel" class="form-label">Re-order Level</label>
           <input
             id="reOrderLevel"
             type="number"
@@ -195,7 +170,7 @@
         </div>
 
         <div class="field">
-          <label for="expireNotifyDays" class="form-label">Expire notify days</label>
+          <label for="expireNotifyDays" class="form-label">Expire Notify Days</label>
           <input
             id="expireNotifyDays"
             type="text"

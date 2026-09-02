@@ -27,113 +27,6 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     exact: true,
   },
   {
-    id: 'customers',
-    label: 'Customers',
-    shortLabel: 'CU',
-    expandedByDefault: false,
-    children: [
-      {
-        id: 'customers-list',
-        label: 'Customer List',
-        shortLabel: 'CL',
-        link: '/customers/list',
-        children: [],
-      },
-      {
-        id: 'customers-create',
-        label: 'Customer Create',
-        shortLabel: 'CC',
-        link: '/customers/create',
-      },
-    ],
-  },
-  {
-    id: 'stores',
-    label: 'Stores',
-    shortLabel: 'ST',
-    expandedByDefault: false,
-    children: [
-      {
-        id: 'stores-list',
-        label: 'Store List',
-        shortLabel: 'SL',
-        link: '/stores/list',
-      },
-      {
-        id: 'stores-create',
-        label: 'Store Create',
-        shortLabel: 'SC',
-        link: '/stores/create',
-      },
-      {
-        id: 'stores-stock',
-        label: 'Stock',
-        shortLabel: 'SK',
-        link: '/stores/stock',
-      },
-    ],
-  },
-  {
-    id: 'financial-years',
-    label: 'Financial Years',
-    shortLabel: 'FY',
-    expandedByDefault: false,
-    children: [
-      {
-        id: 'financial-years-list',
-        label: 'FY List',
-        shortLabel: 'FL',
-        link: '/financial-years/list',
-      },
-      {
-        id: 'financial-years-create',
-        label: 'FY Create',
-        shortLabel: 'FC',
-        link: '/financial-years/create',
-      },
-    ],
-  },
-  {
-    id: 'suppliers',
-    label: 'Suppliers',
-    shortLabel: 'SU',
-    expandedByDefault: false,
-    children: [
-      {
-        id: 'suppliers-list',
-        label: 'Supplier List',
-        shortLabel: 'SL',
-        link: '/suppliers/list',
-      },
-      {
-        id: 'suppliers-create',
-        label: 'Supplier Create',
-        shortLabel: 'SC',
-        link: '/suppliers/create',
-      },
-    ],
-  },
-  {
-    id: 'lookups',
-    label: 'Lookups',
-    shortLabel: 'LK',
-    expandedByDefault: false,
-    children: [
-      {
-        id: 'lookups-list',
-        label: 'Lookup List',
-        shortLabel: 'LL',
-        link: '/lookups/list',
-      },
-      {
-        id: 'lookups-create',
-        label: 'Lookup Create',
-        shortLabel: 'LC',
-        link: '/lookups/create',
-      },
-    ],
-  },
-  {
     id: 'items',
     label: 'Items',
     shortLabel: 'IT',
@@ -237,6 +130,18 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         shortLabel: 'IN',
         link: '/sales/invoices',
       },
+      {
+        id: 'sales-due-collection',
+        label: 'Due Collection',
+        shortLabel: 'DC',
+        link: '/sales/due-collection',
+      },
+      {
+        id: 'sales-return',
+        label: 'Sales Return',
+        shortLabel: 'RT',
+        link: '/sales/sales-return',
+      },
     ],
   },
   {
@@ -256,6 +161,113 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         label: 'Reconcile Create',
         shortLabel: 'CR',
         link: '/reconcile-stocks/create',
+      },
+    ],
+  },
+  {
+    id: 'stores',
+    label: 'Stores',
+    shortLabel: 'ST',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'stores-list',
+        label: 'Store List',
+        shortLabel: 'SL',
+        link: '/stores/list',
+      },
+      {
+        id: 'stores-create',
+        label: 'Store Create',
+        shortLabel: 'SC',
+        link: '/stores/create',
+      },
+      {
+        id: 'stores-stock',
+        label: 'Stock',
+        shortLabel: 'SK',
+        link: '/stores/stock',
+      },
+    ],
+  },
+  {
+    id: 'suppliers',
+    label: 'Suppliers',
+    shortLabel: 'SU',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'suppliers-list',
+        label: 'Supplier List',
+        shortLabel: 'SL',
+        link: '/suppliers/list',
+      },
+      {
+        id: 'suppliers-create',
+        label: 'Supplier Create',
+        shortLabel: 'SC',
+        link: '/suppliers/create',
+      },
+    ],
+  },
+  {
+    id: 'customers',
+    label: 'Customers',
+    shortLabel: 'CU',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'customers-list',
+        label: 'Customer List',
+        shortLabel: 'CL',
+        link: '/customers/list',
+        children: [],
+      },
+      {
+        id: 'customers-create',
+        label: 'Customer Create',
+        shortLabel: 'CC',
+        link: '/customers/create',
+      },
+    ],
+  },
+  {
+    id: 'financial-years',
+    label: 'Financial Years',
+    shortLabel: 'FY',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'financial-years-list',
+        label: 'FY List',
+        shortLabel: 'FL',
+        link: '/financial-years/list',
+      },
+      {
+        id: 'financial-years-create',
+        label: 'FY Create',
+        shortLabel: 'FC',
+        link: '/financial-years/create',
+      },
+    ],
+  },
+  {
+    id: 'lookups',
+    label: 'Lookups',
+    shortLabel: 'LK',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'lookups-list',
+        label: 'Lookup List',
+        shortLabel: 'LL',
+        link: '/lookups/list',
+      },
+      {
+        id: 'lookups-create',
+        label: 'Lookup Create',
+        shortLabel: 'LC',
+        link: '/lookups/create',
       },
     ],
   },

@@ -4,6 +4,8 @@ export class InvoiceItemResponse {
   itemId?: string;
   receiveItemId?: string;
   salesItemId?: string;
+  itemName?: string;
+  itemCode?: string;
   quantity?: number;
   unitPrice?: number;
   discountPercent?: number;
