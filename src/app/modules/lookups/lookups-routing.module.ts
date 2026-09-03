@@ -1,26 +1,25 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { LookupCreateComponent } from './lookup-create/lookup-create.component';
-import { LookupEditComponent } from './lookup-edit/lookup-edit.component';
 import { LookupListComponent } from './lookup-list/lookup-list.component';
 
 const routes: Routes = [
   {
     path: '',
-    redirectTo: 'list',
-    pathMatch: 'full',
-  },
-  {
-    path: 'list',
     component: LookupListComponent,
   },
   {
+    path: 'list',
+    redirectTo: '',
+    pathMatch: 'full',
+  },
+  {
     path: 'create',
-    component: LookupCreateComponent,
+    redirectTo: '',
+    pathMatch: 'full',
   },
   {
     path: 'edit/:id',
-    component: LookupEditComponent,
+    component: LookupListComponent,
   },
 ];
 

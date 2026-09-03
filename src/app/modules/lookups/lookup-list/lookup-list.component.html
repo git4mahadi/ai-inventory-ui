@@ -1,16 +1,123 @@
-<div class="lookup-list">
+<div class="lookup-crud">
+  <div #lookupFormShell class="form-shell" [class.is-editing]="isEditing">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Lookup</h1>
+        <span class="toolbar-meta">{{ isEditing ? 'Update record' : 'New record' }}</span>
+      </div>
+    </div>
+
+    <form class="create-form" [formGroup]="lookupForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="lookupEnumKey" class="form-label">
+            Type <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="lookupEnumKey"
+            class="form-ng-select"
+            formControlName="lookupEnumKey"
+            placeholder="Select..."
+            [clearable]="false"
+            [searchable]="false"
+            [class.is-invalid]="submitted && f['lookupEnumKey'].invalid"
+          >
+            @for (type of lookupTypes; track type.key) {
+              <ng-option [value]="type.key">{{ type.value }}</ng-option>
+            }
+          </ng-select>
+          @if (submitted && f['lookupEnumKey'].errors?.['required']) {
+            <div class="invalid-feedback d-block">Lookup type is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="lookupName" class="form-label">
+            Name <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="lookupName"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="lookupName"
+            placeholder="Lookup name"
+            [class.is-invalid]="submitted && f['lookupName'].invalid"
+          />
+          @if (submitted && f['lookupName'].errors?.['required']) {
+            <div class="invalid-feedback">Lookup name is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="lookupShortName" class="form-label">Short name</label>
+          <input
+            id="lookupShortName"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="lookupShortName"
+            placeholder="Short name"
+          />
+        </div>
+
+        <div class="field">
+          <label for="parentId" class="form-label">Parent</label>
+          <ng-select
+            id="parentId"
+            class="form-ng-select"
+            formControlName="parentId"
+            placeholder="Search parent lookup..."
+            appendTo="body"
+            [clearable]="true"
+            [searchable]="true"
+            [typeahead]="parentTypeahead$"
+            [minTermLength]="0"
+            [loading]="loadingParents"
+            (open)="onParentOpen()"
+          >
+            @for (parent of parentOptions; track parent.id) {
+              <ng-option [value]="parent.id">{{ parentLabel(parent) }}</ng-option>
+            }
+          </ng-select>
+        </div>
+
+      </div>
+
+      <div class="form-footer">
+        <div class="field-check">
+          <div class="form-check">
+            <input
+              id="enabled"
+              type="checkbox"
+              class="form-check-input"
+              formControlName="enabled"
+            />
+            <label for="enabled" class="form-check-label">Enabled</label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-green btn-sm" (click)="resetForm()" [disabled]="saving">
+            {{ isEditing ? 'Cancel' : 'Clear' }}
+          </button>
+          <button type="submit" class="btn btn-green btn-sm" [disabled]="saving">
+            @if (saving) {
+              {{ isEditing ? 'Updating...' : 'Saving...' }}
+            } @else {
+              {{ isEditing ? 'Update' : 'Save' }}
+            }
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
   <div class="list-shell">
     <div class="list-toolbar">
       <div class="toolbar-title">
-        <h1 class="page-title">Lookups</h1>
+        <h2 class="page-title">Lookup list</h2>
         @if (hasLoaded) {
           <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
         }
       </div>
-      <a routerLink="/lookups/create" class="btn-create" title="Create lookup">
-        <span class="icon-plus" aria-hidden="true"></span>
-        <span class="btn-create-label">Create</span>
-      </a>
     </div>
 
     <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
@@ -50,7 +157,6 @@
       @if (hasLoaded && totalElements === 0) {
         <div class="state-block">
           <span class="text-muted">No lookups found.</span>
-          <a routerLink="/lookups/create" class="btn btn-green btn-sm">Create first</a>
         </div>
       } @else {
         <div class="app-data-grid" aria-label="Lookup list">
@@ -75,7 +181,6 @@
             (cellClicked)="onCellClicked($event)"
           />
         </div>
-
       }
     </div>
   </div>
