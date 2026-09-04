@@ -2,6 +2,7 @@ import { map, Observable } from 'rxjs';
 import { ApiResponse } from '../models/Response';
 import { Page } from '../models/Page';
 import { CustomerResponse } from '../../models/response/CustomerResponse';
+import { ExpenseResponse } from '../../models/response/ExpenseResponse';
 import { FinancialYearResponse } from '../../models/response/FinancialYearResponse';
 import { StoreResponse } from '../../models/response/StoreResponse';
 import { ItemResponse } from '../../models/response/ItemResponse';
@@ -220,6 +221,32 @@ export function normalizeItem(payload: unknown): ItemResponse | null {
 
   if ('data' in value && value['data'] != null) {
     return normalizeItem(value['data']);
+  }
+
+  return null;
+}
+
+/** Resolves an expense entity from a raw or `{ data: expense }` payload. */
+export function normalizeExpense(payload: unknown): ExpenseResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'expenseDate' in value ||
+    'expenseHeadId' in value ||
+    'expenseHeadName' in value ||
+    'amount' in value ||
+    'remarks' in value ||
+    'id' in value
+  ) {
+    return value as ExpenseResponse;
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeExpense(value['data']);
   }
 
   return null;

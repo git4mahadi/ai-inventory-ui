@@ -131,6 +131,12 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     ],
   },
   {
+    id: 'expenses',
+    label: 'Expense',
+    shortLabel: 'EX',
+    link: '/expenses',
+  },
+  {
     id: 'reconcile-stocks',
     label: 'Stock Reconcile',
     shortLabel: 'SR',

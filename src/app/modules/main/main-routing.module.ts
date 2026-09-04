@@ -74,6 +74,11 @@ const routes: Routes = [
           import('../sales/sales.module').then((m) => m.SalesModule),
       },
       {
+        path: 'expenses',
+        loadChildren: () =>
+          import('../expenses/expenses.module').then((m) => m.ExpensesModule),
+      },
+      {
         path: 'reconcile-stocks',
         loadChildren: () =>
           import('../reconcile-stocks/reconcile-stocks.module').then(

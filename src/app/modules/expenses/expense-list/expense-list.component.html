@@ -1,0 +1,389 @@
+<div class="expense-crud">
+  <div class="form-shell">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Expense</h1>
+        <span class="toolbar-meta">
+          @if (cartItems.length) {
+            {{ cartItems.length | bdNumber:0 }} in cart
+          } @else {
+            New records
+          }
+        </span>
+      </div>
+    </div>
+
+    <form class="create-form" [formGroup]="expenseForm" (ngSubmit)="onAddToCart()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="expenseDate" class="form-label">
+            Date <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="expenseDate"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="expenseDate"
+            bsDatepicker
+            [bsConfig]="datePickerConfig"
+            placeholder="Select date"
+            autocomplete="off"
+            [class.is-invalid]="submitted && f['expenseDate'].invalid"
+          />
+          @if (submitted && f['expenseDate'].errors?.['required']) {
+            <div class="invalid-feedback">Expense date is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="expenseHeadId" class="form-label">
+            Expense Head <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="expenseHeadId"
+            #expenseHeadSelect
+            class="form-ng-select"
+            formControlName="expenseHeadId"
+            placeholder="Select expense head..."
+            appendTo="body"
+            [clearable]="true"
+            [searchable]="true"
+            [loading]="loadingHeads"
+            [class.is-invalid]="submitted && f['expenseHeadId'].invalid"
+          >
+            @for (lookup of expenseHeadOptions; track lookup.id) {
+              <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
+            }
+          </ng-select>
+          @if (submitted && f['expenseHeadId'].errors?.['required']) {
+            <div class="invalid-feedback d-block">Expense head is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="amount" class="form-label">
+            Amount <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="amount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            class="form-control form-control-sm"
+            formControlName="amount"
+            placeholder="0.00"
+            [class.is-invalid]="submitted && f['amount'].invalid"
+            (keydown.enter)="onAddLineEnter($event)"
+          />
+          @if (submitted && f['amount'].errors?.['required']) {
+            <div class="invalid-feedback">Amount is required.</div>
+          } @else if (submitted && f['amount'].errors?.['min']) {
+            <div class="invalid-feedback">Amount must be greater than zero.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="remarks" class="form-label">Remarks</label>
+          <div class="field-control-row">
+            <input
+              id="remarks"
+              type="text"
+              class="form-control form-control-sm"
+              formControlName="remarks"
+              placeholder="Optional remarks"
+              (keydown.enter)="onAddLineEnter($event)"
+            />
+            <button
+              type="button"
+              class="btn-add-line"
+              title="Add to cart"
+              aria-label="Add expense to cart"
+              (click)="onAddToCart()"
+              [disabled]="saving"
+            >
+              <span class="btn-add-line-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      @if (cartItems.length) {
+        <div class="cart-wrap">
+          <div class="cart-head">
+            <span class="cart-title">Cart</span>
+            <span class="cart-meta">
+              {{ cartItems.length | bdNumber:0 }} items · Total {{ cartTotal | bdNumber }}
+            </span>
+          </div>
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Head</th>
+                <th>Amount</th>
+                <th>Remarks</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of cartItems; track item.key) {
+                <tr>
+                  <td class="cell-mono">{{ formatDate(item.expenseDate) }}</td>
+                  <td>{{ item.expenseHeadName }}</td>
+                  <td class="cell-mono">{{ item.amount | bdNumber }}</td>
+                  <td class="cell-muted">{{ item.remarks || '—' }}</td>
+                  <td class="col-actions">
+                    <button
+                      type="button"
+                      class="icon-action icon-delete"
+                      title="Remove from cart"
+                      aria-label="Remove from cart"
+                      (click)="removeCartItem(item.key)"
+                      [disabled]="saving"
+                    >
+                      <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <div class="form-footer">
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-green btn-sm" (click)="resetForm()" [disabled]="saving">
+            Clear
+          </button>
+          <button
+            type="button"
+            class="btn btn-green btn-sm"
+            (click)="onSaveCart()"
+            [disabled]="saving || (!cartItems.length && expenseForm.invalid)"
+          >
+            {{ saving ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="list-shell">
+    <div class="list-toolbar">
+      <div class="toolbar-title">
+        <h2 class="page-title">Expense list</h2>
+        @if (hasLoaded) {
+          <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
+        }
+      </div>
+    </div>
+
+    <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="searchTerm"
+        placeholder="Search"
+        aria-label="Search term"
+      />
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="expenseDateFrom"
+        bsDatepicker
+        [bsConfig]="datePickerConfig"
+        placeholder="From date"
+        autocomplete="off"
+        aria-label="From date"
+      />
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="expenseDateTo"
+        bsDatepicker
+        [bsConfig]="datePickerConfig"
+        placeholder="To date"
+        autocomplete="off"
+        aria-label="To date"
+      />
+      <ng-select
+        class="filter-ng-select"
+        formControlName="expenseHeadId"
+        placeholder="All heads"
+        [clearable]="true"
+        [searchable]="true"
+        [loading]="loadingHeads"
+        aria-label="Expense head"
+      >
+        @for (lookup of expenseHeadOptions; track lookup.id) {
+          <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
+        }
+      </ng-select>
+      <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">Search</button>
+      <button type="button" class="btn btn-outline-green btn-sm" (click)="onReset()" [disabled]="loading">
+        Reset
+      </button>
+    </form>
+
+    <div class="table-wrap">
+      @if (hasLoaded && totalElements === 0) {
+        <div class="state-block">
+          <span class="text-muted">No expenses found.</span>
+        </div>
+      } @else {
+        <div class="app-data-grid" aria-label="Expense list">
+          <ag-grid-angular
+            [modules]="gridModules"
+            [theme]="gridTheme"
+            [columnDefs]="columnDefs"
+            [defaultColDef]="defaultColDef"
+            [rowModelType]="'infinite'"
+            [datasource]="dataSource"
+            [pagination]="true"
+            [paginationPageSize]="size"
+            [paginationPageSizeSelector]="false"
+            [paginationNumberFormatter]="paginationNumberFormatter"
+            [cacheBlockSize]="size"
+            [headerHeight]="41"
+            [rowHeight]="41"
+            [animateRows]="false"
+            [suppressCellFocus]="true"
+            [suppressRowHoverHighlight]="false"
+            (gridReady)="onGridReady($event)"
+            (cellClicked)="onCellClicked($event)"
+          />
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (isEditing) {
+    <div class="edit-backdrop" role="presentation" (click)="closeEditDialog()">
+      <div
+        class="edit-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="expense-edit-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="edit-toolbar">
+          <div class="toolbar-title">
+            <h2 id="expense-edit-title" class="page-title">Update expense</h2>
+            <span class="toolbar-meta">One record</span>
+          </div>
+        </div>
+
+        <form class="edit-form" [formGroup]="editForm" (ngSubmit)="onUpdate()" novalidate>
+          <div class="edit-grid">
+            <div class="field">
+              <label for="editExpenseDate" class="form-label">
+                Date <span class="required-mark" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="editExpenseDate"
+                type="text"
+                class="form-control form-control-sm"
+                formControlName="expenseDate"
+                bsDatepicker
+                [bsConfig]="datePickerConfig"
+                placeholder="Select date"
+                autocomplete="off"
+                [class.is-invalid]="editSubmitted && ef['expenseDate'].invalid"
+              />
+              @if (editSubmitted && ef['expenseDate'].errors?.['required']) {
+                <div class="invalid-feedback">Expense date is required.</div>
+              }
+            </div>
+
+            <div class="field">
+              <label for="editExpenseHeadId" class="form-label">
+                Expense head <span class="required-mark" aria-hidden="true">*</span>
+              </label>
+              <ng-select
+                id="editExpenseHeadId"
+                class="form-ng-select"
+                formControlName="expenseHeadId"
+                placeholder="Select expense head..."
+                [clearable]="true"
+                [searchable]="true"
+                [loading]="loadingHeads"
+                [appendTo]="'body'"
+                [class.is-invalid]="editSubmitted && ef['expenseHeadId'].invalid"
+              >
+                @for (lookup of expenseHeadOptions; track lookup.id) {
+                  <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
+                }
+              </ng-select>
+              @if (editSubmitted && ef['expenseHeadId'].errors?.['required']) {
+                <div class="invalid-feedback d-block">Expense head is required.</div>
+              }
+            </div>
+
+            <div class="field">
+              <label for="editAmount" class="form-label">
+                Amount <span class="required-mark" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="editAmount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                class="form-control form-control-sm"
+                formControlName="amount"
+                placeholder="0.00"
+                [class.is-invalid]="editSubmitted && ef['amount'].invalid"
+              />
+              @if (editSubmitted && ef['amount'].errors?.['required']) {
+                <div class="invalid-feedback">Amount is required.</div>
+              } @else if (editSubmitted && ef['amount'].errors?.['min']) {
+                <div class="invalid-feedback">Amount must be greater than zero.</div>
+              }
+            </div>
+
+            <div class="field field-span">
+              <label for="editRemarks" class="form-label">Remarks</label>
+              <input
+                id="editRemarks"
+                type="text"
+                class="form-control form-control-sm"
+                formControlName="remarks"
+                placeholder="Optional remarks"
+              />
+            </div>
+          </div>
+
+          <div class="form-footer">
+            <div class="form-actions">
+              <button
+                type="button"
+                class="btn btn-outline-green btn-sm"
+                (click)="closeEditDialog()"
+                [disabled]="updating"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-green btn-sm" [disabled]="updating">
+                {{ updating ? 'Updating...' : 'Update' }}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <app-confirm-dialog
+    [open]="!!pendingDelete"
+    [danger]="true"
+    title="Delete expense"
+    [message]="deleteDialogMessage"
+    [detail]="deleteDialogDetail"
+    confirmLabel="Delete"
+    cancelLabel="Cancel"
+    [busy]="!!deletingId"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+</div>
