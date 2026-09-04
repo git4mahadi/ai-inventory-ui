@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import {
@@ -12,14 +12,18 @@ import {
   IDatasource,
   IGetRowsParams,
   PaginationNumberFormatterParams,
-  themeQuartz,
 } from 'ag-grid-community';
 import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
-import { normalizePage } from '../../../core/utils/api-response.util';
+import { normalizeCustomer, normalizePage } from '../../../core/utils/api-response.util';
+import { CustomerDto } from '../../../models/dto/CustomerDto';
 import { CustomerResponse } from '../../../models/response/CustomerResponse';
 import { CustomerSearchDto } from '../../../models/search/CustomerSearchDto';
 import { CustomerApiService } from '../../../services/CustomerApiService';
-import { appGridModules } from '../../../shared/utils/ag-grid.util';
+import {
+  appGridDefaultColDef,
+  appGridModules,
+  appGridTheme,
+} from '../../../shared/utils/ag-grid.util';
 
 @Component({
   selector: 'app-customer-list',
@@ -28,6 +32,8 @@ import { appGridModules } from '../../../shared/utils/ag-grid.util';
   styleUrl: './customer-list.component.scss',
 })
 export class CustomerListComponent implements OnInit {
+  @ViewChild('customerFormShell') customerFormShell?: ElementRef<HTMLElement>;
+  readonly customerForm: FormGroup;
   readonly searchForm: FormGroup;
   readonly columnDefs: ColDef<CustomerResponse>[] = [
     {
@@ -64,7 +70,7 @@ export class CustomerListComponent implements OnInit {
     },
     {
       field: 'enabled',
-      headerName: 'Active',
+      headerName: 'Enabled',
       width: 90,
       minWidth: 90,
       maxWidth: 90,
@@ -86,27 +92,8 @@ export class CustomerListComponent implements OnInit {
         this.renderActionsCell(params.data),
     },
   ];
-  readonly defaultColDef: ColDef<CustomerResponse> = {
-    sortable: false,
-    filter: false,
-    resizable: true,
-    suppressMovable: true,
-  };
-  readonly gridTheme = themeQuartz.withParams({
-    accentColor: '#2a9d6a',
-    backgroundColor: '#ffffff',
-    borderColor: 'rgba(18, 53, 40, 0.08)',
-    borderRadius: 0,
-    cellTextColor: '#123528',
-    dataBackgroundColor: '#ffffff',
-    fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
-    headerBackgroundColor: '#eef6f1',
-    headerFontWeight: 700,
-    headerTextColor: '#176643',
-    oddRowBackgroundColor: 'rgba(241, 248, 244, 0.4)',
-    rowBorder: { color: 'rgba(18, 53, 40, 0.05)' },
-    rowHoverColor: 'rgba(42, 157, 106, 0.07)',
-  });
+  readonly defaultColDef = appGridDefaultColDef;
+  readonly gridTheme = appGridTheme;
   readonly gridModules = appGridModules;
   readonly dataSource: IDatasource = {
     getRows: (params) => this.getCustomerRows(params),
@@ -114,9 +101,13 @@ export class CustomerListComponent implements OnInit {
   readonly paginationNumberFormatter = (
     params: PaginationNumberFormatterParams<CustomerResponse>,
   ): string => formatToBdNumberingSystem(params.value, 0);
+
   customers: CustomerResponse[] = [];
+  submitted = false;
+  saving = false;
   loading = false;
   hasLoaded = false;
+  editingId: string | null = null;
   deletingId: string | null = null;
   pendingDelete: CustomerResponse | null = null;
   private gridApi?: GridApi<CustomerResponse>;
@@ -129,9 +120,17 @@ export class CustomerListComponent implements OnInit {
   constructor(
     private readonly formBuilder: FormBuilder,
     private readonly customerApi: CustomerApiService,
-    private readonly toastr: ToastrService,
+    private readonly route: ActivatedRoute,
     private readonly router: Router,
+    private readonly toastr: ToastrService,
   ) {
+    this.customerForm = this.formBuilder.group({
+      customerName: ['', [Validators.required, Validators.maxLength(100)]],
+      mobile: ['', [Validators.maxLength(20)]],
+      email: ['', [Validators.email, Validators.maxLength(100)]],
+      address: ['', [Validators.maxLength(250)]],
+      enabled: [true],
+    });
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
       customerName: [''],
@@ -140,7 +139,27 @@ export class CustomerListComponent implements OnInit {
     });
   }
 
+  get f() {
+    return this.customerForm.controls;
+  }
+
+  get isEditing(): boolean {
+    return !!this.editingId;
+  }
+
+  get deleteDialogMessage(): string {
+    return 'This will permanently remove the customer and cannot be undone.';
+  }
+
+  get deleteDialogDetail(): string {
+    return this.pendingDelete?.customerName || this.pendingDelete?.id || '';
+  }
+
   ngOnInit(): void {
+    const routeId = this.route.snapshot.paramMap.get('id');
+    if (routeId) {
+      this.loadCustomerForEdit(routeId);
+    }
   }
 
   onGridReady(event: GridReadyEvent<CustomerResponse>): void {
@@ -154,21 +173,154 @@ export class CustomerListComponent implements OnInit {
     }
 
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
-    if (action === 'edit' && event.data.id) {
-      void this.router.navigate(['/customers/edit', event.data.id], {
-        state: { customer: event.data },
-      });
+    if (action === 'edit') {
+      this.startEdit(event.data);
     } else if (action === 'delete') {
       this.requestDelete(event.data);
     }
   }
 
-  get deleteDialogMessage(): string {
-    return 'This will permanently remove the customer and cannot be undone.';
+  onSearch(): void {
+    this.reloadGrid();
   }
 
-  get deleteDialogDetail(): string {
-    return this.pendingDelete?.customerName || this.pendingDelete?.id || '';
+  onReset(): void {
+    this.searchForm.reset({
+      searchTerm: '',
+      customerName: '',
+      mobile: '',
+      email: '',
+    });
+    this.reloadGrid();
+  }
+
+  onSubmit(): void {
+    this.submitted = true;
+    if (this.customerForm.invalid || this.saving) {
+      return;
+    }
+
+    const value = this.customerForm.getRawValue();
+    const dto = new CustomerDto({
+      customerName: value.customerName?.trim(),
+      mobile: value.mobile?.trim() || undefined,
+      email: value.email?.trim() || undefined,
+      address: value.address?.trim() || undefined,
+      enabled: !!value.enabled,
+    });
+
+    this.saving = true;
+    const request$ = this.editingId
+      ? this.customerApi.updateCustomer(this.editingId, dto)
+      : this.customerApi.createCustomer(dto);
+
+    request$.pipe(finalize(() => (this.saving = false))).subscribe({
+      next: () => {
+        this.toastr.success(
+          this.editingId ? 'Customer updated successfully' : 'Customer created successfully',
+        );
+        this.resetForm();
+        this.reloadGrid();
+      },
+    });
+  }
+
+  resetForm(): void {
+    this.editingId = null;
+    this.submitted = false;
+    this.customerForm.reset({
+      customerName: '',
+      mobile: '',
+      email: '',
+      address: '',
+      enabled: true,
+    });
+    if (this.route.snapshot.paramMap.get('id')) {
+      void this.router.navigate(['/customers']);
+    }
+  }
+
+  requestDelete(customer: CustomerResponse): void {
+    if (!customer.id || this.deletingId) {
+      return;
+    }
+    this.pendingDelete = customer;
+  }
+
+  cancelDelete(): void {
+    if (this.deletingId) {
+      return;
+    }
+    this.pendingDelete = null;
+  }
+
+  confirmDelete(): void {
+    const customer = this.pendingDelete;
+    if (!customer?.id) {
+      return;
+    }
+
+    this.deletingId = customer.id;
+    this.refreshActionCells(customer.id);
+    this.customerApi
+      .deleteCustomer(customer.id)
+      .pipe(
+        finalize(() => {
+          this.deletingId = null;
+          this.pendingDelete = null;
+          this.refreshActionCells();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.toastr.success('Customer deleted successfully');
+          if (this.editingId === customer.id) {
+            this.resetForm();
+          }
+          this.gridApi?.refreshInfiniteCache();
+        },
+      });
+  }
+
+  private startEdit(customer: CustomerResponse): void {
+    const normalized = normalizeCustomer(customer);
+    if (!normalized?.id) {
+      return;
+    }
+
+    this.patchFormForEdit(normalized);
+    this.customerFormShell?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    this.customerApi.getCustomerById(normalized.id).subscribe({
+      next: (full) => {
+        if (this.editingId === normalized.id) {
+          this.patchFormForEdit(full);
+        }
+      },
+    });
+  }
+
+  private loadCustomerForEdit(id: string): void {
+    this.customerApi.getCustomerById(id).subscribe({
+      next: (customer) => this.patchFormForEdit(customer),
+      error: () => this.resetForm(),
+    });
+  }
+
+  private patchFormForEdit(customer: CustomerResponse): void {
+    const normalized = normalizeCustomer(customer);
+    if (!normalized?.id) {
+      return;
+    }
+
+    this.editingId = normalized.id;
+    this.submitted = false;
+    this.customerForm.patchValue({
+      customerName: normalized.customerName ?? '',
+      mobile: normalized.mobile ?? '',
+      email: normalized.email ?? '',
+      address: normalized.address ?? '',
+      enabled: normalized.enabled ?? true,
+    });
   }
 
   private getCustomerRows(params: IGetRowsParams<CustomerResponse>): void {
@@ -209,66 +361,6 @@ export class CustomerListComponent implements OnInit {
       });
   }
 
-  onSearch(): void {
-    this.reloadGrid();
-  }
-
-  onReset(): void {
-    this.searchForm.reset({
-      searchTerm: '',
-      customerName: '',
-      mobile: '',
-      email: '',
-    });
-    this.reloadGrid();
-  }
-
-  requestDelete(customer: CustomerResponse): void {
-    if (!customer.id || this.deletingId) {
-      return;
-    }
-    this.pendingDelete = customer;
-  }
-
-  cancelDelete(): void {
-    if (this.deletingId) {
-      return;
-    }
-    this.pendingDelete = null;
-  }
-
-  confirmDelete(): void {
-    const customer = this.pendingDelete;
-    if (!customer?.id) {
-      return;
-    }
-
-    this.deletingId = customer.id;
-    this.gridApi?.refreshCells({
-      rowNodes: this.gridApi.getRenderedNodes().filter((rowNode) => rowNode.data?.id === customer.id),
-      columns: ['actions'],
-      force: true,
-    });
-    this.customerApi
-      .deleteCustomer(customer.id)
-      .pipe(
-        finalize(() => {
-          this.deletingId = null;
-          this.pendingDelete = null;
-          this.gridApi?.refreshCells({
-            columns: ['actions'],
-            force: true,
-          });
-        }),
-      )
-      .subscribe({
-        next: () => {
-          this.toastr.success('Customer deleted successfully');
-          this.gridApi?.refreshInfiniteCache();
-        },
-      });
-  }
-
   private reloadGrid(): void {
     this.hasLoaded = false;
     this.loading = true;
@@ -276,6 +368,19 @@ export class CustomerListComponent implements OnInit {
     this.totalElements = 0;
     this.totalPages = 0;
     this.gridApi?.setGridOption('datasource', this.dataSource);
+  }
+
+  private refreshActionCells(customerId?: string): void {
+    if (!this.gridApi) {
+      return;
+    }
+    this.gridApi.refreshCells({
+      rowNodes: customerId
+        ? this.gridApi.getRenderedNodes().filter((rowNode) => rowNode.data?.id === customerId)
+        : undefined,
+      columns: ['actions'],
+      force: true,
+    });
   }
 
   private renderEnabledCell(enabled: boolean): string {

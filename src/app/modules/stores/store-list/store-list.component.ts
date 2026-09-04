@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import {
@@ -14,7 +14,8 @@ import {
   PaginationNumberFormatterParams,
 } from 'ag-grid-community';
 import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
-import { normalizePage } from '../../../core/utils/api-response.util';
+import { normalizePage, normalizeStore } from '../../../core/utils/api-response.util';
+import { StoreDto } from '../../../models/dto/StoreDto';
 import { StoreResponse } from '../../../models/response/StoreResponse';
 import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
 import { StoreApiService } from '../../../services/StoreApiService';
@@ -31,6 +32,8 @@ import {
   styleUrl: './store-list.component.scss',
 })
 export class StoreListComponent implements OnInit {
+  @ViewChild('storeFormShell') storeFormShell?: ElementRef<HTMLElement>;
+  readonly storeForm: FormGroup;
   readonly searchForm: FormGroup;
   readonly columnDefs: ColDef<StoreResponse>[] = [
     {
@@ -107,9 +110,13 @@ export class StoreListComponent implements OnInit {
   readonly paginationNumberFormatter = (
     params: PaginationNumberFormatterParams<StoreResponse>,
   ): string => formatToBdNumberingSystem(params.value, 0);
+
   stores: StoreResponse[] = [];
+  submitted = false;
+  saving = false;
   loading = false;
   hasLoaded = false;
+  editingId: string | null = null;
   deletingId: string | null = null;
   pendingDelete: StoreResponse | null = null;
   private gridApi?: GridApi<StoreResponse>;
@@ -122,9 +129,18 @@ export class StoreListComponent implements OnInit {
   constructor(
     private readonly formBuilder: FormBuilder,
     private readonly storeApi: StoreApiService,
-    private readonly toastr: ToastrService,
+    private readonly route: ActivatedRoute,
     private readonly router: Router,
+    private readonly toastr: ToastrService,
   ) {
+    this.storeForm = this.formBuilder.group({
+      storeName: ['', [Validators.required, Validators.maxLength(100)]],
+      storeCode: ['', [Validators.required, Validators.maxLength(20)]],
+      mobile: ['', [Validators.maxLength(20)]],
+      address: ['', [Validators.maxLength(250)]],
+      isMain: [false],
+      enabled: [true],
+    });
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
       storeName: [''],
@@ -133,7 +149,27 @@ export class StoreListComponent implements OnInit {
     });
   }
 
+  get f() {
+    return this.storeForm.controls;
+  }
+
+  get isEditing(): boolean {
+    return !!this.editingId;
+  }
+
+  get deleteDialogMessage(): string {
+    return 'This will permanently remove the store and cannot be undone.';
+  }
+
+  get deleteDialogDetail(): string {
+    return this.pendingDelete?.storeName || this.pendingDelete?.id || '';
+  }
+
   ngOnInit(): void {
+    const routeId = this.route.snapshot.paramMap.get('id');
+    if (routeId) {
+      this.loadStoreForEdit(routeId);
+    }
   }
 
   onGridReady(event: GridReadyEvent<StoreResponse>): void {
@@ -147,21 +183,155 @@ export class StoreListComponent implements OnInit {
     }
 
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
-    if (action === 'edit' && event.data.id) {
-      void this.router.navigate(['/stores/edit', event.data.id], {
-        state: { store: event.data },
-      });
+    if (action === 'edit') {
+      this.startEdit(event.data);
     } else if (action === 'delete') {
       this.requestDelete(event.data);
     }
   }
 
-  get deleteDialogMessage(): string {
-    return 'This will permanently remove the store and cannot be undone.';
+  onSearch(): void {
+    this.reloadGrid();
   }
 
-  get deleteDialogDetail(): string {
-    return this.pendingDelete?.storeName || this.pendingDelete?.id || '';
+  onReset(): void {
+    this.searchForm.reset({
+      searchTerm: '',
+      storeName: '',
+      storeCode: '',
+      mobile: '',
+    });
+    this.reloadGrid();
+  }
+
+  onSubmit(): void {
+    this.submitted = true;
+    if (this.storeForm.invalid || this.saving) {
+      return;
+    }
+
+    const value = this.storeForm.getRawValue();
+    const dto = new StoreDto({
+      storeName: value.storeName?.trim(),
+      storeCode: value.storeCode?.trim(),
+      mobile: value.mobile?.trim() || undefined,
+      address: value.address?.trim() || undefined,
+      isMain: !!value.isMain,
+      enabled: !!value.enabled,
+    });
+
+    this.saving = true;
+    const request$ = this.editingId
+      ? this.storeApi.updateStore(this.editingId, dto)
+      : this.storeApi.createStore(dto);
+
+    request$.pipe(finalize(() => (this.saving = false))).subscribe({
+      next: () => {
+        this.toastr.success(this.editingId ? 'Store updated successfully' : 'Store created successfully');
+        this.resetForm();
+        this.reloadGrid();
+      },
+    });
+  }
+
+  resetForm(): void {
+    this.editingId = null;
+    this.submitted = false;
+    this.storeForm.reset({
+      storeName: '',
+      storeCode: '',
+      mobile: '',
+      address: '',
+      isMain: false,
+      enabled: true,
+    });
+    if (this.route.snapshot.paramMap.get('id')) {
+      void this.router.navigate(['/stores']);
+    }
+  }
+
+  requestDelete(store: StoreResponse): void {
+    if (!store.id || this.deletingId) {
+      return;
+    }
+    this.pendingDelete = store;
+  }
+
+  cancelDelete(): void {
+    if (this.deletingId) {
+      return;
+    }
+    this.pendingDelete = null;
+  }
+
+  confirmDelete(): void {
+    const store = this.pendingDelete;
+    if (!store?.id) {
+      return;
+    }
+
+    this.deletingId = store.id;
+    this.refreshActionCells(store.id);
+    this.storeApi
+      .deleteStore(store.id)
+      .pipe(
+        finalize(() => {
+          this.deletingId = null;
+          this.pendingDelete = null;
+          this.refreshActionCells();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.toastr.success('Store deleted successfully');
+          if (this.editingId === store.id) {
+            this.resetForm();
+          }
+          this.gridApi?.refreshInfiniteCache();
+        },
+      });
+  }
+
+  private startEdit(store: StoreResponse): void {
+    const normalized = normalizeStore(store);
+    if (!normalized?.id) {
+      return;
+    }
+
+    this.patchFormForEdit(normalized);
+    this.storeFormShell?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    this.storeApi.getStoreById(normalized.id).subscribe({
+      next: (full) => {
+        if (this.editingId === normalized.id) {
+          this.patchFormForEdit(full);
+        }
+      },
+    });
+  }
+
+  private loadStoreForEdit(id: string): void {
+    this.storeApi.getStoreById(id).subscribe({
+      next: (store) => this.patchFormForEdit(store),
+      error: () => this.resetForm(),
+    });
+  }
+
+  private patchFormForEdit(store: StoreResponse): void {
+    const normalized = normalizeStore(store);
+    if (!normalized?.id) {
+      return;
+    }
+
+    this.editingId = normalized.id;
+    this.submitted = false;
+    this.storeForm.patchValue({
+      storeName: normalized.storeName ?? '',
+      storeCode: normalized.storeCode ?? '',
+      mobile: normalized.mobile ?? '',
+      address: normalized.address ?? '',
+      isMain: !!normalized.isMain,
+      enabled: normalized.enabled ?? true,
+    });
   }
 
   private getStoreRows(params: IGetRowsParams<StoreResponse>): void {
@@ -202,66 +372,6 @@ export class StoreListComponent implements OnInit {
       });
   }
 
-  onSearch(): void {
-    this.reloadGrid();
-  }
-
-  onReset(): void {
-    this.searchForm.reset({
-      searchTerm: '',
-      storeName: '',
-      storeCode: '',
-      mobile: '',
-    });
-    this.reloadGrid();
-  }
-
-  requestDelete(store: StoreResponse): void {
-    if (!store.id || this.deletingId) {
-      return;
-    }
-    this.pendingDelete = store;
-  }
-
-  cancelDelete(): void {
-    if (this.deletingId) {
-      return;
-    }
-    this.pendingDelete = null;
-  }
-
-  confirmDelete(): void {
-    const store = this.pendingDelete;
-    if (!store?.id) {
-      return;
-    }
-
-    this.deletingId = store.id;
-    this.gridApi?.refreshCells({
-      rowNodes: this.gridApi.getRenderedNodes().filter((rowNode) => rowNode.data?.id === store.id),
-      columns: ['actions'],
-      force: true,
-    });
-    this.storeApi
-      .deleteStore(store.id)
-      .pipe(
-        finalize(() => {
-          this.deletingId = null;
-          this.pendingDelete = null;
-          this.gridApi?.refreshCells({
-            columns: ['actions'],
-            force: true,
-          });
-        }),
-      )
-      .subscribe({
-        next: () => {
-          this.toastr.success('Store deleted successfully');
-          this.gridApi?.refreshInfiniteCache();
-        },
-      });
-  }
-
   private reloadGrid(): void {
     this.hasLoaded = false;
     this.loading = true;
@@ -269,6 +379,19 @@ export class StoreListComponent implements OnInit {
     this.totalElements = 0;
     this.totalPages = 0;
     this.gridApi?.setGridOption('datasource', this.dataSource);
+  }
+
+  private refreshActionCells(storeId?: string): void {
+    if (!this.gridApi) {
+      return;
+    }
+    this.gridApi.refreshCells({
+      rowNodes: storeId
+        ? this.gridApi.getRenderedNodes().filter((rowNode) => rowNode.data?.id === storeId)
+        : undefined,
+      columns: ['actions'],
+      force: true,
+    });
   }
 
   private renderEnabledCell(enabled: boolean): string {

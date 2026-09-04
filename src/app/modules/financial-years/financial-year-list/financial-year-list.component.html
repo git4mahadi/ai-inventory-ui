@@ -1,26 +1,154 @@
-<div class="financial-year-list">
+<div class="fy-crud">
+  <div #fyFormShell class="form-shell" [class.is-editing]="isEditing">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Financial Year</h1>
+        <span class="toolbar-meta">{{ isEditing ? 'Update record' : 'New record' }}</span>
+      </div>
+    </div>
+
+    <form class="create-form" [formGroup]="financialYearForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="fyCode" class="form-label">
+            Code <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="fyCode"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="fyCode"
+            placeholder="FY2025-26"
+            [class.is-invalid]="submitted && f['fyCode'].invalid"
+          />
+          @if (submitted && f['fyCode'].errors?.['required']) {
+            <div class="invalid-feedback">Financial year code is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="startDate" class="form-label">
+            Start date <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="startDate"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="startDate"
+            bsDatepicker
+            [bsConfig]="datePickerConfig"
+            placeholder="Select start date"
+            autocomplete="off"
+            [class.is-invalid]="submitted && f['startDate'].invalid"
+          />
+          @if (submitted && f['startDate'].errors?.['required']) {
+            <div class="invalid-feedback">Start date is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="endDate" class="form-label">
+            End date <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="endDate"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="endDate"
+            bsDatepicker
+            [bsConfig]="datePickerConfig"
+            placeholder="Select end date"
+            autocomplete="off"
+            [class.is-invalid]="submitted && f['endDate'].invalid"
+          />
+          @if (submitted && f['endDate'].errors?.['required']) {
+            <div class="invalid-feedback">End date is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="description" class="form-label">Description</label>
+          <input
+            id="description"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="description"
+            placeholder="Optional description"
+          />
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <div class="field-checks">
+          <div class="field-check">
+            <div class="form-check">
+              <input
+                id="isCurrent"
+                type="checkbox"
+                class="form-check-input"
+                formControlName="isCurrent"
+              />
+              <label for="isCurrent" class="form-check-label">Current year</label>
+            </div>
+          </div>
+          <div class="field-check">
+            <div class="form-check">
+              <input
+                id="enabled"
+                type="checkbox"
+                class="form-check-input"
+                formControlName="enabled"
+              />
+              <label for="enabled" class="form-check-label">Enabled</label>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-green btn-sm" (click)="resetForm()" [disabled]="saving">
+            {{ isEditing ? 'Cancel' : 'Clear' }}
+          </button>
+          <button type="submit" class="btn btn-green btn-sm" [disabled]="saving">
+            @if (saving) {
+              {{ isEditing ? 'Updating...' : 'Saving...' }}
+            } @else {
+              {{ isEditing ? 'Update' : 'Save' }}
+            }
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
   <div class="list-shell">
     <div class="list-toolbar">
       <div class="toolbar-title">
-        <h1 class="page-title">Financial Years</h1>
+        <h2 class="page-title">Financial year list</h2>
         @if (hasLoaded) {
           <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
         }
       </div>
-      <a routerLink="/financial-years/create" class="btn-create" title="Create financial year">
-        <span class="icon-plus" aria-hidden="true"></span>
-        <span class="btn-create-label">Create</span>
-      </a>
     </div>
 
     <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
-      <input type="text" class="form-control form-control-sm" formControlName="searchTerm" placeholder="Search" aria-label="Search term" />
-      <input type="text" class="form-control form-control-sm" formControlName="fyCode" placeholder="FY code" aria-label="Financial year code" />
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="searchTerm"
+        placeholder="Search"
+        aria-label="Search term"
+      />
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="fyCode"
+        placeholder="FY code"
+        aria-label="Financial year code"
+      />
       <ng-select
         class="filter-ng-select"
         formControlName="isCurrent"
-        placeholder="Select..."
-        [clearable]="false"
+        placeholder="All"
+        [clearable]="true"
         [searchable]="false"
         aria-label="Current year"
       >
@@ -37,7 +165,6 @@
       @if (hasLoaded && totalElements === 0) {
         <div class="state-block">
           <span class="text-muted">No financial years found.</span>
-          <a routerLink="/financial-years/create" class="btn btn-green btn-sm">Create first</a>
         </div>
       } @else {
         <div class="app-data-grid" aria-label="Financial year list">
@@ -62,7 +189,6 @@
             (cellClicked)="onCellClicked($event)"
           />
         </div>
-
       }
     </div>
   </div>

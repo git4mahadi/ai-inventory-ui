@@ -1,26 +1,26 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { FinancialYearCreateComponent } from './financial-year-create/financial-year-create.component';
-import { FinancialYearEditComponent } from './financial-year-edit/financial-year-edit.component';
 import { FinancialYearListComponent } from './financial-year-list/financial-year-list.component';
 
 const routes: Routes = [
   {
-    path: '',
-    redirectTo: 'list',
-    pathMatch: 'full',
-  },
-  {
-    path: 'list',
+    path: 'edit/:id',
     component: FinancialYearListComponent,
   },
   {
-    path: 'create',
-    component: FinancialYearCreateComponent,
+    path: 'list',
+    redirectTo: '',
+    pathMatch: 'full',
   },
   {
-    path: 'edit/:id',
-    component: FinancialYearEditComponent,
+    path: 'create',
+    redirectTo: '',
+    pathMatch: 'full',
+  },
+  {
+    path: '',
+    component: FinancialYearListComponent,
+    pathMatch: 'full',
   },
 ];
 

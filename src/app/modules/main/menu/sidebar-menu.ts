@@ -148,6 +148,12 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         shortLabel: 'RT',
         link: '/sales/sales-return',
       },
+      {
+        id: 'sales-stock',
+        label: 'Stock',
+        shortLabel: 'SK',
+        link: '/stores/stock',
+      },
     ],
   },
   {
@@ -197,103 +203,41 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     ],
   },
   {
-    id: 'stores',
-    label: 'Stores',
-    shortLabel: 'ST',
-    expandedByDefault: false,
-    children: [
-      {
-        id: 'stores-list',
-        label: 'Store List',
-        shortLabel: 'SL',
-        link: '/stores/list',
-      },
-      {
-        id: 'stores-create',
-        label: 'Store Create',
-        shortLabel: 'SC',
-        link: '/stores/create',
-      },
-      {
-        id: 'stores-stock',
-        label: 'Stock',
-        shortLabel: 'SK',
-        link: '/stores/stock',
-      },
-    ],
-  },
-  {
-    id: 'suppliers',
-    label: 'Suppliers',
-    shortLabel: 'SU',
-    expandedByDefault: false,
-    children: [
-      {
-        id: 'suppliers-list',
-        label: 'Supplier List',
-        shortLabel: 'SL',
-        link: '/suppliers/list',
-      },
-      {
-        id: 'suppliers-create',
-        label: 'Supplier Create',
-        shortLabel: 'SC',
-        link: '/suppliers/create',
-      },
-    ],
-  },
-  {
-    id: 'customers',
-    label: 'Customers',
-    shortLabel: 'CU',
-    expandedByDefault: false,
-    children: [
-      {
-        id: 'customers-list',
-        label: 'Customer List',
-        shortLabel: 'CL',
-        link: '/customers/list',
-        children: [],
-      },
-      {
-        id: 'customers-create',
-        label: 'Customer Create',
-        shortLabel: 'CC',
-        link: '/customers/create',
-      },
-    ],
-  },
-  {
-    id: 'financial-years',
-    label: 'Financial Years',
-    shortLabel: 'FY',
-    expandedByDefault: false,
-    children: [
-      {
-        id: 'financial-years-list',
-        label: 'FY List',
-        shortLabel: 'FL',
-        link: '/financial-years/list',
-      },
-      {
-        id: 'financial-years-create',
-        label: 'FY Create',
-        shortLabel: 'FC',
-        link: '/financial-years/create',
-      },
-    ],
-  },
-  {
     id: 'setup',
     label: 'Setup',
     shortLabel: 'SE',
     expandedByDefault: false,
     children: [
       {
+        id: 'setup-customer',
+        label: 'Customer',
+        shortLabel: 'CU',
+        link: '/customers',
+      },
+      {
+        id: 'setup-supplier',
+        label: 'Supplier',
+        shortLabel: 'SU',
+        link: '/suppliers',
+      },
+      {
+        id: 'setup-store',
+        label: 'Store',
+        shortLabel: 'ST',
+        link: '/stores',
+        exact: true,
+      },
+      {
         id: 'setup-lookup',
         label: 'Lookup',
         shortLabel: 'LK',
         link: '/lookups',
+      },
+      {
+        id: 'setup-financial-year',
+        label: 'Financial Year',
+        shortLabel: 'FY',
+        link: '/financial-years',
       },
     ],
   },
@@ -307,7 +251,7 @@ export function findExpandedIdsForUrl(
 ): string[] {
   for (const node of nodes) {
     const path = ancestors.concat(node.id);
-    if (node.link && urlStartsWith(url, node.link)) {
+    if (node.link && urlMatches(url, node)) {
       return ancestors;
     }
     if (node.children?.length) {
@@ -320,9 +264,12 @@ export function findExpandedIdsForUrl(
   return [];
 }
 
-function urlStartsWith(url: string, link: string): boolean {
+function urlMatches(url: string, node: SidebarMenuNode): boolean {
   const normalizedUrl = url.split('?')[0].replace(/\/$/, '') || '/';
-  const normalizedLink = link.replace(/\/$/, '') || '/';
+  const normalizedLink = (node.link || '').replace(/\/$/, '') || '/';
+  if (node.exact === true) {
+    return normalizedUrl === normalizedLink;
+  }
   return (
     normalizedUrl === normalizedLink ||
     normalizedUrl.startsWith(`${normalizedLink}/`)

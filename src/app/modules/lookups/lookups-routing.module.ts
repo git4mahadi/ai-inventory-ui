@@ -4,7 +4,7 @@ import { LookupListComponent } from './lookup-list/lookup-list.component';
 
 const routes: Routes = [
   {
-    path: '',
+    path: 'edit/:id',
     component: LookupListComponent,
   },
   {
@@ -18,8 +18,9 @@ const routes: Routes = [
     pathMatch: 'full',
   },
   {
-    path: 'edit/:id',
+    path: '',
     component: LookupListComponent,
+    pathMatch: 'full',
   },
 ];
 

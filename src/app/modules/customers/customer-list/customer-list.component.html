@@ -1,23 +1,136 @@
-<div class="customer-list">
+<div class="customer-crud">
+  <div #customerFormShell class="form-shell" [class.is-editing]="isEditing">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Customer</h1>
+        <span class="toolbar-meta">{{ isEditing ? 'Update record' : 'New record' }}</span>
+      </div>
+    </div>
+
+    <form class="create-form" [formGroup]="customerForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="customerName" class="form-label">
+            Name <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="customerName"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="customerName"
+            placeholder="Full name"
+            [class.is-invalid]="submitted && f['customerName'].invalid"
+          />
+          @if (submitted && f['customerName'].errors?.['required']) {
+            <div class="invalid-feedback">Customer name is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="mobile" class="form-label">Mobile</label>
+          <input
+            id="mobile"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="mobile"
+            placeholder="Mobile number"
+          />
+        </div>
+
+        <div class="field">
+          <label for="email" class="form-label">Email</label>
+          <input
+            id="email"
+            type="email"
+            class="form-control form-control-sm"
+            formControlName="email"
+            placeholder="email@example.com"
+            [class.is-invalid]="submitted && f['email'].invalid"
+          />
+          @if (submitted && f['email'].errors?.['email']) {
+            <div class="invalid-feedback">Enter a valid email.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="address" class="form-label">Address</label>
+          <input
+            id="address"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="address"
+            placeholder="Address"
+          />
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <div class="field-check">
+          <div class="form-check">
+            <input
+              id="enabled"
+              type="checkbox"
+              class="form-check-input"
+              formControlName="enabled"
+            />
+            <label for="enabled" class="form-check-label">Enabled</label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-green btn-sm" (click)="resetForm()" [disabled]="saving">
+            {{ isEditing ? 'Cancel' : 'Clear' }}
+          </button>
+          <button type="submit" class="btn btn-green btn-sm" [disabled]="saving">
+            @if (saving) {
+              {{ isEditing ? 'Updating...' : 'Saving...' }}
+            } @else {
+              {{ isEditing ? 'Update' : 'Save' }}
+            }
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
   <div class="list-shell">
     <div class="list-toolbar">
       <div class="toolbar-title">
-        <h1 class="page-title">Customers</h1>
+        <h2 class="page-title">Customer list</h2>
         @if (hasLoaded) {
           <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
         }
       </div>
-      <a routerLink="/customers/create" class="btn-create" title="Create customer">
-        <span class="icon-plus" aria-hidden="true"></span>
-        <span class="btn-create-label">Create</span>
-      </a>
     </div>
 
     <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
-      <input type="text" class="form-control form-control-sm" formControlName="searchTerm" placeholder="Search" aria-label="Search term" />
-      <input type="text" class="form-control form-control-sm" formControlName="customerName" placeholder="Name" aria-label="Customer name" />
-      <input type="text" class="form-control form-control-sm" formControlName="mobile" placeholder="Mobile" aria-label="Mobile" />
-      <input type="email" class="form-control form-control-sm" formControlName="email" placeholder="Email" aria-label="Email" />
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="searchTerm"
+        placeholder="Search"
+        aria-label="Search term"
+      />
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="customerName"
+        placeholder="Name"
+        aria-label="Customer name"
+      />
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="mobile"
+        placeholder="Mobile"
+        aria-label="Mobile"
+      />
+      <input
+        type="email"
+        class="form-control form-control-sm"
+        formControlName="email"
+        placeholder="Email"
+        aria-label="Email"
+      />
       <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">Search</button>
       <button type="button" class="btn btn-outline-green btn-sm" (click)="onReset()" [disabled]="loading">
         Reset
@@ -28,10 +141,9 @@
       @if (hasLoaded && totalElements === 0) {
         <div class="state-block">
           <span class="text-muted">No customers found.</span>
-          <a routerLink="/customers/create" class="btn btn-green btn-sm">Create first</a>
         </div>
       } @else {
-        <div class="app-data-grid customer-grid" aria-label="Customer list">
+        <div class="app-data-grid" aria-label="Customer list">
           <ag-grid-angular
             [modules]="gridModules"
             [theme]="gridTheme"

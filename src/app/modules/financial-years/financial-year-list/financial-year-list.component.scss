@@ -1,9 +1,112 @@
-.financial-year-list {
+.fy-crud {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
   .page-title {
     margin: 0;
     font-size: 1.05rem;
     font-weight: 700;
     color: var(--green-ink);
+  }
+}
+
+.form-shell {
+  background: #fff;
+  border: 1px solid var(--panel-border);
+  border-left: 4px solid var(--green-500);
+  border-radius: 0.85rem;
+  box-shadow: 0 8px 22px rgba(18, 53, 40, 0.05);
+  overflow: hidden;
+
+  &.is-editing {
+    border-left-color: #c27d12;
+  }
+}
+
+.form-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid rgba(18, 53, 40, 0.07);
+  background: linear-gradient(180deg, #f7fbf8 0%, #fff 100%);
+}
+
+.create-form {
+  padding: 0.75rem 0.85rem 0.85rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.9fr) minmax(140px, 1fr) minmax(140px, 1fr) minmax(180px, 1.3fr);
+  gap: 0.55rem 0.65rem;
+}
+
+.field {
+  min-width: 0;
+
+  .form-label {
+    margin-bottom: 0.15rem;
+    font-size: 0.75rem;
+  }
+
+  .form-control-sm {
+    min-height: 1.85rem;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.8125rem;
+  }
+
+  .invalid-feedback {
+    font-size: 0.72rem;
+    margin-top: 0.15rem;
+  }
+}
+
+.form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(31, 128, 84, 0.1);
+}
+
+.field-checks {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.field-check {
+  display: flex;
+  align-items: center;
+
+  .form-check {
+    margin: 0;
+    min-height: 1.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .form-check-label {
+    font-size: 0.8125rem;
+    color: var(--green-ink);
+  }
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+
+  .btn-sm {
+    padding: 0.2rem 0.65rem;
+    font-size: 0.78rem;
   }
 }
 
@@ -458,6 +561,10 @@
 }
 
 @media (max-width: 991.98px) {
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .filter-bar {
     grid-template-columns: 1fr 1fr;
 
@@ -468,6 +575,23 @@
 }
 
 @media (max-width: 575.98px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions {
+    margin-left: 0;
+
+    .btn {
+      flex: 1;
+    }
+  }
+
   .filter-bar {
     grid-template-columns: 1fr;
   }

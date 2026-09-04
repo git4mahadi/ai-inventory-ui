@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import {
@@ -14,8 +15,9 @@ import {
   PaginationNumberFormatterParams,
 } from 'ag-grid-community';
 import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
-import { normalizePage } from '../../../core/utils/api-response.util';
-import { toDisplayDate } from '../../../core/utils/date.util';
+import { normalizeFinancialYear, normalizePage } from '../../../core/utils/api-response.util';
+import { toApiDate, toDatePickerValue, toDisplayDate } from '../../../core/utils/date.util';
+import { FinancialYearDto } from '../../../models/dto/FinancialYearDto';
 import { FinancialYearResponse } from '../../../models/response/FinancialYearResponse';
 import { FinancialYearSearchDto } from '../../../models/search/FinancialYearSearchDto';
 import { FinancialYearApiService } from '../../../services/FinancialYearApiService';
@@ -28,7 +30,16 @@ import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../sha
   styleUrl: './financial-year-list.component.scss',
 })
 export class FinancialYearListComponent implements OnInit {
+  @ViewChild('fyFormShell') fyFormShell?: ElementRef<HTMLElement>;
+  readonly financialYearForm: FormGroup;
   readonly searchForm: FormGroup;
+  readonly datePickerConfig: Partial<BsDatepickerConfig> = {
+    dateInputFormat: 'DD-MMM-YY',
+    containerClass: 'theme-green',
+    adaptivePosition: true,
+    showWeekNumbers: false,
+    customTodayClass: 'bs-datepicker-today',
+  };
   readonly columnDefs: ColDef<FinancialYearResponse>[] = [
     {
       field: 'fyCode',
@@ -103,9 +114,13 @@ export class FinancialYearListComponent implements OnInit {
   readonly paginationNumberFormatter = (
     params: PaginationNumberFormatterParams<FinancialYearResponse>,
   ): string => formatToBdNumberingSystem(params.value, 0);
+
   financialYears: FinancialYearResponse[] = [];
+  submitted = false;
+  saving = false;
   loading = false;
   hasLoaded = false;
+  editingId: string | null = null;
   deletingId: string | null = null;
   pendingDelete: FinancialYearResponse | null = null;
   private gridApi?: GridApi<FinancialYearResponse>;
@@ -118,9 +133,18 @@ export class FinancialYearListComponent implements OnInit {
   constructor(
     private readonly formBuilder: FormBuilder,
     private readonly financialYearApi: FinancialYearApiService,
-    private readonly toastr: ToastrService,
+    private readonly route: ActivatedRoute,
     private readonly router: Router,
+    private readonly toastr: ToastrService,
   ) {
+    this.financialYearForm = this.formBuilder.group({
+      fyCode: ['', [Validators.required, Validators.maxLength(20)]],
+      startDate: [null as Date | null, [Validators.required]],
+      endDate: [null as Date | null, [Validators.required]],
+      isCurrent: [false],
+      enabled: [true],
+      description: ['', [Validators.maxLength(250)]],
+    });
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
       fyCode: [''],
@@ -128,7 +152,31 @@ export class FinancialYearListComponent implements OnInit {
     });
   }
 
+  get f() {
+    return this.financialYearForm.controls;
+  }
+
+  get isEditing(): boolean {
+    return !!this.editingId;
+  }
+
+  get deleteDialogMessage(): string {
+    return 'This will permanently remove the financial year and cannot be undone.';
+  }
+
+  get deleteDialogDetail(): string {
+    return this.pendingDelete?.fyCode || this.pendingDelete?.id || '';
+  }
+
   ngOnInit(): void {
+    const routeId = this.route.snapshot.paramMap.get('id');
+    if (routeId) {
+      this.loadFinancialYearForEdit(routeId);
+    }
+  }
+
+  formatDate(value?: string): string {
+    return toDisplayDate(value) || '—';
   }
 
   onGridReady(event: GridReadyEvent<FinancialYearResponse>): void {
@@ -142,25 +190,156 @@ export class FinancialYearListComponent implements OnInit {
     }
 
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
-    if (action === 'edit' && event.data.id) {
-      void this.router.navigate(['/financial-years/edit', event.data.id], {
-        state: { financialYear: event.data },
-      });
+    if (action === 'edit') {
+      this.startEdit(event.data);
     } else if (action === 'delete') {
       this.requestDelete(event.data);
     }
   }
 
-  get deleteDialogMessage(): string {
-    return 'This will permanently remove the financial year and cannot be undone.';
+  onSearch(): void {
+    this.reloadGrid();
   }
 
-  get deleteDialogDetail(): string {
-    return this.pendingDelete?.fyCode || this.pendingDelete?.id || '';
+  onReset(): void {
+    this.searchForm.reset({
+      searchTerm: '',
+      fyCode: '',
+      isCurrent: null,
+    });
+    this.reloadGrid();
   }
 
-  formatDate(value?: string): string {
-    return toDisplayDate(value) || '—';
+  onSubmit(): void {
+    this.submitted = true;
+    if (this.financialYearForm.invalid || this.saving) {
+      return;
+    }
+
+    const value = this.financialYearForm.getRawValue();
+    const dto = new FinancialYearDto({
+      fyCode: value.fyCode?.trim(),
+      startDate: toApiDate(value.startDate),
+      endDate: toApiDate(value.endDate),
+      isCurrent: !!value.isCurrent,
+      enabled: !!value.enabled,
+      description: value.description?.trim() || undefined,
+    });
+
+    this.saving = true;
+    const request$ = this.editingId
+      ? this.financialYearApi.updateFinancialYear(this.editingId, dto)
+      : this.financialYearApi.createFinancialYear(dto);
+
+    request$.pipe(finalize(() => (this.saving = false))).subscribe({
+      next: () => {
+        this.toastr.success(
+          this.editingId ? 'Financial year updated successfully' : 'Financial year created successfully',
+        );
+        this.resetForm();
+        this.reloadGrid();
+      },
+    });
+  }
+
+  resetForm(): void {
+    this.editingId = null;
+    this.submitted = false;
+    this.financialYearForm.reset({
+      fyCode: '',
+      startDate: null,
+      endDate: null,
+      isCurrent: false,
+      enabled: true,
+      description: '',
+    });
+    if (this.route.snapshot.paramMap.get('id')) {
+      void this.router.navigate(['/financial-years']);
+    }
+  }
+
+  requestDelete(financialYear: FinancialYearResponse): void {
+    if (!financialYear.id || this.deletingId) {
+      return;
+    }
+    this.pendingDelete = financialYear;
+  }
+
+  cancelDelete(): void {
+    if (this.deletingId) {
+      return;
+    }
+    this.pendingDelete = null;
+  }
+
+  confirmDelete(): void {
+    const financialYear = this.pendingDelete;
+    if (!financialYear?.id) {
+      return;
+    }
+
+    this.deletingId = financialYear.id;
+    this.refreshActionCells(financialYear.id);
+    this.financialYearApi
+      .deleteFinancialYear(financialYear.id)
+      .pipe(
+        finalize(() => {
+          this.deletingId = null;
+          this.pendingDelete = null;
+          this.refreshActionCells();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.toastr.success('Financial year deleted successfully');
+          if (this.editingId === financialYear.id) {
+            this.resetForm();
+          }
+          this.gridApi?.refreshInfiniteCache();
+        },
+      });
+  }
+
+  private startEdit(financialYear: FinancialYearResponse): void {
+    const normalized = normalizeFinancialYear(financialYear);
+    if (!normalized?.id) {
+      return;
+    }
+
+    this.patchFormForEdit(normalized);
+    this.fyFormShell?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    this.financialYearApi.getFinancialYearById(normalized.id).subscribe({
+      next: (full) => {
+        if (this.editingId === normalized.id) {
+          this.patchFormForEdit(full);
+        }
+      },
+    });
+  }
+
+  private loadFinancialYearForEdit(id: string): void {
+    this.financialYearApi.getFinancialYearById(id).subscribe({
+      next: (financialYear) => this.patchFormForEdit(financialYear),
+      error: () => this.resetForm(),
+    });
+  }
+
+  private patchFormForEdit(financialYear: FinancialYearResponse): void {
+    const normalized = normalizeFinancialYear(financialYear);
+    if (!normalized?.id) {
+      return;
+    }
+
+    this.editingId = normalized.id;
+    this.submitted = false;
+    this.financialYearForm.patchValue({
+      fyCode: normalized.fyCode ?? '',
+      startDate: toDatePickerValue(normalized.startDate),
+      endDate: toDatePickerValue(normalized.endDate),
+      isCurrent: !!normalized.isCurrent,
+      enabled: normalized.enabled ?? true,
+      description: normalized.description ?? '',
+    });
   }
 
   private getFinancialYearRows(params: IGetRowsParams<FinancialYearResponse>): void {
@@ -203,67 +382,6 @@ export class FinancialYearListComponent implements OnInit {
       });
   }
 
-  onSearch(): void {
-    this.reloadGrid();
-  }
-
-  onReset(): void {
-    this.searchForm.reset({
-      searchTerm: '',
-      fyCode: '',
-      isCurrent: null,
-    });
-    this.reloadGrid();
-  }
-
-  requestDelete(financialYear: FinancialYearResponse): void {
-    if (!financialYear.id || this.deletingId) {
-      return;
-    }
-    this.pendingDelete = financialYear;
-  }
-
-  cancelDelete(): void {
-    if (this.deletingId) {
-      return;
-    }
-    this.pendingDelete = null;
-  }
-
-  confirmDelete(): void {
-    const financialYear = this.pendingDelete;
-    if (!financialYear?.id) {
-      return;
-    }
-
-    this.deletingId = financialYear.id;
-    this.gridApi?.refreshCells({
-      rowNodes: this.gridApi
-        .getRenderedNodes()
-        .filter((rowNode) => rowNode.data?.id === financialYear.id),
-      columns: ['actions'],
-      force: true,
-    });
-    this.financialYearApi
-      .deleteFinancialYear(financialYear.id)
-      .pipe(
-        finalize(() => {
-          this.deletingId = null;
-          this.pendingDelete = null;
-          this.gridApi?.refreshCells({
-            columns: ['actions'],
-            force: true,
-          });
-        }),
-      )
-      .subscribe({
-        next: () => {
-          this.toastr.success('Financial year deleted successfully');
-          this.gridApi?.refreshInfiniteCache();
-        },
-      });
-  }
-
   private reloadGrid(): void {
     this.hasLoaded = false;
     this.loading = true;
@@ -271,6 +389,19 @@ export class FinancialYearListComponent implements OnInit {
     this.totalElements = 0;
     this.totalPages = 0;
     this.gridApi?.setGridOption('datasource', this.dataSource);
+  }
+
+  private refreshActionCells(financialYearId?: string): void {
+    if (!this.gridApi) {
+      return;
+    }
+    this.gridApi.refreshCells({
+      rowNodes: financialYearId
+        ? this.gridApi.getRenderedNodes().filter((rowNode) => rowNode.data?.id === financialYearId)
+        : undefined,
+      columns: ['actions'],
+      force: true,
+    });
   }
 
   private renderEnabledCell(enabled: boolean): string {

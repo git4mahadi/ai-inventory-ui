@@ -1,26 +1,26 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { SupplierCreateComponent } from './supplier-create/supplier-create.component';
-import { SupplierEditComponent } from './supplier-edit/supplier-edit.component';
 import { SupplierListComponent } from './supplier-list/supplier-list.component';
 
 const routes: Routes = [
   {
-    path: '',
-    redirectTo: 'list',
-    pathMatch: 'full',
-  },
-  {
-    path: 'list',
+    path: 'edit/:id',
     component: SupplierListComponent,
   },
   {
-    path: 'create',
-    component: SupplierCreateComponent,
+    path: 'list',
+    redirectTo: '',
+    pathMatch: 'full',
   },
   {
-    path: 'edit/:id',
-    component: SupplierEditComponent,
+    path: 'create',
+    redirectTo: '',
+    pathMatch: 'full',
+  },
+  {
+    path: '',
+    component: SupplierListComponent,
+    pathMatch: 'full',
   },
 ];
 

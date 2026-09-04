@@ -1,16 +1,201 @@
-<div class="supplier-list">
+<div class="supplier-crud">
+  <div #supplierFormShell class="form-shell" [class.is-editing]="isEditing">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Supplier</h1>
+        <span class="toolbar-meta">{{ isEditing ? 'Update record' : 'New record' }}</span>
+      </div>
+    </div>
+
+    <form class="create-form" [formGroup]="supplierForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="supplierName" class="form-label">
+            Name <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="supplierName"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="supplierName"
+            placeholder="Supplier name"
+            [class.is-invalid]="submitted && f['supplierName'].invalid"
+          />
+          @if (submitted && f['supplierName'].errors?.['required']) {
+            <div class="invalid-feedback">Supplier name is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="supplierTypeEnumKey" class="form-label">Type</label>
+          <ng-select
+            id="supplierTypeEnumKey"
+            class="form-ng-select"
+            formControlName="supplierTypeEnumKey"
+            placeholder="Select..."
+            [clearable]="true"
+            [searchable]="false"
+          >
+            @for (type of supplierTypes; track type.key) {
+              <ng-option [value]="type.key">{{ type.value }}</ng-option>
+            }
+          </ng-select>
+        </div>
+
+        <div class="field">
+          <label for="tin" class="form-label">TIN</label>
+          <input
+            id="tin"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="tin"
+            placeholder="TIN"
+          />
+        </div>
+
+        <div class="field">
+          <label for="bin" class="form-label">BIN</label>
+          <input
+            id="bin"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="bin"
+            placeholder="BIN"
+          />
+        </div>
+
+        <div class="field">
+          <label for="tradeLicense" class="form-label">Trade license</label>
+          <input
+            id="tradeLicense"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="tradeLicense"
+            placeholder="Trade license"
+          />
+        </div>
+
+        <div class="field">
+          <label for="tradeLicenseValidTo" class="form-label">License valid to</label>
+          <input
+            id="tradeLicenseValidTo"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="tradeLicenseValidTo"
+            bsDatepicker
+            [bsConfig]="datePickerConfig"
+            placeholder="Select date"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="field">
+          <label for="mobile" class="form-label">Mobile</label>
+          <input
+            id="mobile"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="mobile"
+            placeholder="Mobile number"
+          />
+        </div>
+
+        <div class="field">
+          <label for="email" class="form-label">Email</label>
+          <input
+            id="email"
+            type="email"
+            class="form-control form-control-sm"
+            formControlName="email"
+            placeholder="email@example.com"
+            [class.is-invalid]="submitted && f['email'].invalid"
+          />
+          @if (submitted && f['email'].errors?.['email']) {
+            <div class="invalid-feedback">Enter a valid email.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="contactPersonName" class="form-label">Contact person</label>
+          <input
+            id="contactPersonName"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="contactPersonName"
+            placeholder="Contact person name"
+          />
+        </div>
+
+        <div class="field">
+          <label for="contactPersonMobile" class="form-label">Contact mobile</label>
+          <input
+            id="contactPersonMobile"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="contactPersonMobile"
+            placeholder="Contact mobile"
+          />
+        </div>
+
+        <div class="field">
+          <label for="country" class="form-label">Country</label>
+          <input
+            id="country"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="country"
+            placeholder="Country"
+          />
+        </div>
+
+        <div class="field">
+          <label for="address" class="form-label">Address</label>
+          <input
+            id="address"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="address"
+            placeholder="Address"
+          />
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <div class="field-check">
+          <div class="form-check">
+            <input
+              id="enabled"
+              type="checkbox"
+              class="form-check-input"
+              formControlName="enabled"
+            />
+            <label for="enabled" class="form-check-label">Enabled</label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-green btn-sm" (click)="resetForm()" [disabled]="saving">
+            {{ isEditing ? 'Cancel' : 'Clear' }}
+          </button>
+          <button type="submit" class="btn btn-green btn-sm" [disabled]="saving">
+            @if (saving) {
+              {{ isEditing ? 'Updating...' : 'Saving...' }}
+            } @else {
+              {{ isEditing ? 'Update' : 'Save' }}
+            }
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
   <div class="list-shell">
     <div class="list-toolbar">
       <div class="toolbar-title">
-        <h1 class="page-title">Suppliers</h1>
+        <h2 class="page-title">Suppliers</h2>
         @if (hasLoaded) {
           <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
         }
       </div>
-      <a routerLink="/suppliers/create" class="btn-create" title="Create supplier">
-        <span class="icon-plus" aria-hidden="true"></span>
-        <span class="btn-create-label">Create</span>
-      </a>
     </div>
 
     <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
@@ -38,8 +223,8 @@
       <ng-select
         class="filter-ng-select"
         formControlName="supplierTypeEnumKey"
-        placeholder="Select..."
-        [clearable]="false"
+        placeholder="All types"
+        [clearable]="true"
         [searchable]="false"
         aria-label="Supplier type"
       >
@@ -57,10 +242,9 @@
       @if (hasLoaded && totalElements === 0) {
         <div class="state-block">
           <span class="text-muted">No suppliers found.</span>
-          <a routerLink="/suppliers/create" class="btn btn-green btn-sm">Create first</a>
         </div>
       } @else {
-        <div class="app-data-grid" aria-label="Supplier list">
+        <div class="app-data-grid" aria-label="Suppliers">
           <ag-grid-angular
             [modules]="gridModules"
             [theme]="gridTheme"
@@ -82,7 +266,6 @@
             (cellClicked)="onCellClicked($event)"
           />
         </div>
-
       }
     </div>
   </div>
