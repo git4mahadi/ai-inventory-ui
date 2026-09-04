@@ -6,6 +6,8 @@ export class ItemDto {
   @prop() itemBarcode?: string;
   @prop() strength?: string;
   @prop() storeId?: string;
+  @prop() categoryId?: string;
+  @prop() categoryName?: string;
   @prop() supplierId?: string;
   @prop() supplierName?: string;
   @prop() packSizeId?: string;
@@ -16,6 +18,7 @@ export class ItemDto {
   @prop() salesRate?: number;
   @prop() reOrderLevel?: number;
   @prop() expireNotifyDays?: number;
+  @prop() isMedicineItem?: boolean;
   @prop() isForeignItem?: boolean;
   @prop() enabled?: boolean;
 

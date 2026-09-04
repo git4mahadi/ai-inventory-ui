@@ -1,16 +1,286 @@
-<div class="item-list">
+<div class="item-crud">
+  <div #itemFormShell class="form-shell" [class.is-editing]="isEditing">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">Item</h1>
+        <span class="toolbar-meta">{{ isEditing ? 'Update record' : 'New record' }}</span>
+      </div>
+    </div>
+
+    <form class="create-form" [formGroup]="itemForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="itemName" class="form-label">
+            Name <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="itemName"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="itemName"
+            placeholder="Item name"
+            [class.is-invalid]="submitted && f['itemName'].invalid"
+          />
+          @if (submitted && f['itemName'].errors?.['required']) {
+            <div class="invalid-feedback">Item name is required.</div>
+          }
+        </div>
+
+        <div class="field field-half">
+          <label for="itemCode" class="form-label">
+            Code <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="itemCode"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="itemCode"
+            placeholder="Item code"
+            [class.is-invalid]="submitted && f['itemCode'].invalid"
+          />
+          @if (submitted && f['itemCode'].errors?.['required']) {
+            <div class="invalid-feedback">Item code is required.</div>
+          }
+        </div>
+
+        <div class="field field-half">
+          <label for="itemBarcode" class="form-label">Barcode</label>
+          <input
+            id="itemBarcode"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="itemBarcode"
+            placeholder="Barcode"
+          />
+        </div>
+
+        <div class="field field-half">
+          <label for="strength" class="form-label">Strength</label>
+          <input
+            id="strength"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="strength"
+            placeholder="Strength"
+          />
+        </div>
+
+        <div class="field field-half">
+          <label for="categoryId" class="form-label">Category</label>
+          <ng-select
+            id="categoryId"
+            class="form-ng-select"
+            formControlName="categoryId"
+            placeholder="Select category..."
+            [clearable]="true"
+            [searchable]="true"
+            [loading]="loadingLookups"
+          >
+            @for (lookup of categoryOptions; track lookup.id) {
+              <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
+            }
+          </ng-select>
+        </div>
+
+        <div class="field">
+          <label for="storeId" class="form-label">
+            Store <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="storeId"
+            class="form-ng-select"
+            formControlName="storeId"
+            placeholder="Search store..."
+            [clearable]="false"
+            [searchable]="true"
+            [typeahead]="storeTypeahead$"
+            [minTermLength]="0"
+            [loading]="loadingStores"
+            (open)="onStoreOpen()"
+            [class.is-invalid]="submitted && f['storeId'].invalid"
+          >
+            @for (store of storeOptions; track store.id) {
+              <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+            }
+          </ng-select>
+          @if (submitted && f['storeId'].errors?.['required']) {
+            <div class="invalid-feedback d-block">Store is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label for="supplierId" class="form-label">Supplier</label>
+          <ng-select
+            id="supplierId"
+            class="form-ng-select"
+            formControlName="supplierId"
+            placeholder="Type to search supplier..."
+            [clearable]="true"
+            [searchable]="true"
+            [typeahead]="supplierTypeahead$"
+            [minTermLength]="3"
+            [loading]="loadingSuppliers"
+            notFoundText="Type at least 3 characters"
+          >
+            @for (supplier of supplierOptions; track supplier.id) {
+              <ng-option [value]="supplier.id">{{ supplierLabel(supplier) }}</ng-option>
+            }
+          </ng-select>
+        </div>
+
+        <div class="field field-half">
+          <label for="packSizeId" class="form-label">Pack Size</label>
+          <ng-select
+            id="packSizeId"
+            class="form-ng-select"
+            formControlName="packSizeId"
+            placeholder="Select pack size..."
+            [clearable]="true"
+            [searchable]="true"
+            [loading]="loadingLookups"
+          >
+            @for (lookup of packSizeOptions; track lookup.id) {
+              <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
+            }
+          </ng-select>
+        </div>
+
+        <div class="field field-half">
+          <label for="locationId" class="form-label">Location</label>
+          <ng-select
+            id="locationId"
+            class="form-ng-select"
+            formControlName="locationId"
+            placeholder="Select location..."
+            [clearable]="true"
+            [searchable]="true"
+            [loading]="loadingLookups"
+          >
+            @for (lookup of locationOptions; track lookup.id) {
+              <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
+            }
+          </ng-select>
+        </div>
+
+        <div class="field field-half">
+          <label for="purchaseRate" class="form-label">
+            Purchase Rate <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="purchaseRate"
+            type="number"
+            min="0"
+            step="0.01"
+            class="form-control form-control-sm"
+            formControlName="purchaseRate"
+            [class.is-invalid]="submitted && f['purchaseRate'].invalid"
+          />
+          @if (submitted && f['purchaseRate'].errors?.['required']) {
+            <div class="invalid-feedback">Purchase rate is required.</div>
+          }
+        </div>
+
+        <div class="field field-half">
+          <label for="salesRate" class="form-label">
+            Sales Rate <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="salesRate"
+            type="number"
+            min="0"
+            step="0.01"
+            class="form-control form-control-sm"
+            formControlName="salesRate"
+            [class.is-invalid]="submitted && f['salesRate'].invalid"
+          />
+          @if (submitted && f['salesRate'].errors?.['required']) {
+            <div class="invalid-feedback">Sales rate is required.</div>
+          }
+        </div>
+
+        <div class="field field-half">
+          <label for="reOrderLevel" class="form-label">Re-order Level</label>
+          <input
+            id="reOrderLevel"
+            type="number"
+            min="0"
+            class="form-control form-control-sm"
+            formControlName="reOrderLevel"
+          />
+        </div>
+
+        <div class="field field-half">
+          <label for="expireNotifyDays" class="form-label">Expire Notify Days</label>
+          <input
+            id="expireNotifyDays"
+            type="number"
+            min="0"
+            class="form-control form-control-sm"
+            formControlName="expireNotifyDays"
+          />
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <div class="field-checks">
+          <div class="field-check">
+            <div class="form-check">
+              <input
+                id="isMedicineItem"
+                type="checkbox"
+                class="form-check-input"
+                formControlName="isMedicineItem"
+              />
+              <label for="isMedicineItem" class="form-check-label">Medicine item</label>
+            </div>
+          </div>
+          <div class="field-check">
+            <div class="form-check">
+              <input
+                id="isForeignItem"
+                type="checkbox"
+                class="form-check-input"
+                formControlName="isForeignItem"
+              />
+              <label for="isForeignItem" class="form-check-label">Foreign item</label>
+            </div>
+          </div>
+          <div class="field-check">
+            <div class="form-check">
+              <input
+                id="enabled"
+                type="checkbox"
+                class="form-check-input"
+                formControlName="enabled"
+              />
+              <label for="enabled" class="form-check-label">Enabled</label>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-green btn-sm" (click)="resetForm()" [disabled]="saving">
+            {{ isEditing ? 'Cancel' : 'Clear' }}
+          </button>
+          <button type="submit" class="btn btn-green btn-sm" [disabled]="saving">
+            @if (saving) {
+              {{ isEditing ? 'Updating...' : 'Saving...' }}
+            } @else {
+              {{ isEditing ? 'Update' : 'Save' }}
+            }
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
   <div class="list-shell">
     <div class="list-toolbar">
       <div class="toolbar-title">
-        <h1 class="page-title">Items</h1>
+        <h2 class="page-title">Item list</h2>
         @if (hasLoaded) {
           <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
         }
       </div>
-      <a routerLink="/items/create" class="btn-create" title="Create item">
-        <span class="icon-plus" aria-hidden="true"></span>
-        <span class="btn-create-label">Create</span>
-      </a>
     </div>
 
     <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
@@ -42,6 +312,30 @@
         placeholder="Barcode"
         aria-label="Item barcode"
       />
+      <ng-select
+        class="filter-ng-select"
+        formControlName="categoryId"
+        placeholder="All categories"
+        [clearable]="true"
+        [searchable]="true"
+        [loading]="loadingCategories"
+        aria-label="Category"
+      >
+        @for (lookup of categoryOptions; track lookup.id) {
+          <ng-option [value]="lookup.id">{{ lookupLabel(lookup) }}</ng-option>
+        }
+      </ng-select>
+      <ng-select
+        class="filter-ng-select"
+        formControlName="isMedicineItem"
+        placeholder="Medicine"
+        [clearable]="true"
+        [searchable]="false"
+        aria-label="Medicine item"
+      >
+        <ng-option [value]="true">Medicine: Yes</ng-option>
+        <ng-option [value]="false">Medicine: No</ng-option>
+      </ng-select>
       <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">Search</button>
       <button type="button" class="btn btn-outline-green btn-sm" (click)="onReset()" [disabled]="loading">
         Reset
@@ -49,10 +343,9 @@
     </form>
 
     <div class="table-wrap">
-        @if (hasLoaded && totalElements === 0) {
+      @if (hasLoaded && totalElements === 0) {
         <div class="state-block">
           <span class="text-muted">No items found.</span>
-          <a routerLink="/items/create" class="btn btn-green btn-sm">Create first</a>
         </div>
       } @else {
         <div class="app-data-grid" aria-label="Item list">

@@ -11,6 +11,8 @@ export class ItemSearchDto extends SearchDto {
   @prop() supplierId?: string;
   @prop() packSizeId?: string;
   @prop() locationId?: string;
+  @prop() categoryId?: string;
+  @prop() isMedicineItem?: boolean;
   @prop() isForeignItem?: boolean;
 
   public constructor(init?: Partial<ItemSearchDto>) {

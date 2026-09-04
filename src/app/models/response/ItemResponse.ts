@@ -5,6 +5,8 @@ export class ItemResponse {
   itemBarcode?: string;
   strength?: string;
   storeId?: string;
+  categoryId?: string;
+  categoryName?: string;
   supplierId?: string;
   supplierName?: string;
   packSizeId?: string;
@@ -15,6 +17,7 @@ export class ItemResponse {
   salesRate?: number;
   reOrderLevel?: number;
   expireNotifyDays?: number;
+  isMedicineItem?: boolean;
   isForeignItem?: boolean;
   enabled?: boolean;
   currentStock?: number;

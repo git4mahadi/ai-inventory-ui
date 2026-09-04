@@ -27,32 +27,6 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     exact: true,
   },
   {
-    id: 'items',
-    label: 'Items',
-    shortLabel: 'IT',
-    expandedByDefault: false,
-    children: [
-      {
-        id: 'items-list',
-        label: 'Item List',
-        shortLabel: 'IL',
-        link: '/items/list',
-      },
-      {
-        id: 'items-create',
-        label: 'Item Create',
-        shortLabel: 'IC',
-        link: '/items/create',
-      },
-      {
-        id: 'items-barcode-generate',
-        label: 'Barcode Generate',
-        shortLabel: 'BG',
-        link: '/items/barcode-generate',
-      },
-    ],
-  },
-  {
     id: 'opening-stocks',
     label: 'Opening Stock',
     shortLabel: 'OS',
@@ -183,6 +157,12 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     expandedByDefault: false,
     children: [
       {
+        id: 'items-barcode-generate',
+        label: 'Barcode Generate',
+        shortLabel: 'BG',
+        link: '/items/barcode-generate',
+      },
+      {
         id: 'reports-current-stock',
         label: 'Current Stock',
         shortLabel: 'CS',
@@ -208,6 +188,13 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     shortLabel: 'SE',
     expandedByDefault: false,
     children: [
+      {
+        id: 'setup-item',
+        label: 'Item',
+        shortLabel: 'IT',
+        link: '/items',
+        exact: true,
+      },
       {
         id: 'setup-customer',
         label: 'Customer',
