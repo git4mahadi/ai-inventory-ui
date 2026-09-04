@@ -14,6 +14,7 @@ import { ReconcileStockResponse } from '../../models/response/ReconcileStockResp
 import { SalesResponse } from '../../models/response/SalesResponse';
 import { SummaryResponseV1 } from '../../models/response/SummaryResponseV1';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
+import { UserGroupResponse } from '../../models/response/UserGroupResponse';
 
 /** Unwraps `{ data: T }` API envelopes; passes through if already unwrapped. */
 export function unwrapApiData<T>() {
@@ -402,6 +403,66 @@ export function normalizeSummaryV1(payload: unknown): SummaryResponseV1 | null {
   }
 
   return null;
+}
+
+/** Resolves a user group entity from a raw or `{ data: userGroup }` payload. */
+export function normalizeUserGroup(payload: unknown): UserGroupResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'groupName' in value ||
+    'permissions' in value ||
+    ('id' in value && ('enabled' in value || 'isDeleted' in value))
+  ) {
+    return {
+      ...(value as UserGroupResponse),
+      permissions: normalizePermissionList(value['permissions']),
+    };
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeUserGroup(value['data']);
+  }
+
+  return null;
+}
+
+function normalizePermissionList(raw: unknown): string[] {
+  let value: unknown = raw;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+    try {
+      value = JSON.parse(trimmed);
+    } catch {
+      return [trimmed];
+    }
+  }
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (typeof item === 'string') {
+        return item;
+      }
+      if (item && typeof item === 'object') {
+        const record = item as Record<string, unknown>;
+        if (typeof record['name'] === 'string') {
+          return record['name'];
+        }
+      }
+      return '';
+    })
+    .filter((role) => !!role);
 }
 
 /** Resolves a lookup entity from a raw or `{ data: lookup }` payload. */

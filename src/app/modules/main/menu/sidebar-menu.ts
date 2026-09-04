@@ -234,6 +234,20 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
       },
     ],
   },
+  {
+    id: 'security',
+    label: 'Security',
+    shortLabel: 'SC',
+    expandedByDefault: false,
+    children: [
+      {
+        id: 'security-user-group',
+        label: 'User Group',
+        shortLabel: 'UG',
+        link: '/user-groups',
+      },
+    ],
+  },
 ];
 
 /** Collect all ancestor ids that contain a matching link. */

@@ -1,0 +1,230 @@
+<div class="user-group-crud">
+  <div #userGroupFormShell class="form-shell" [class.is-editing]="isEditing">
+    <div class="form-toolbar">
+      <div class="toolbar-title">
+        <h1 class="page-title">User Group</h1>
+        <span class="toolbar-meta">{{ isEditing ? 'Update record' : 'New record' }}</span>
+      </div>
+    </div>
+
+    <form class="create-form" [formGroup]="userGroupForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="groupName" class="form-label">
+            Name <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="groupName"
+            type="text"
+            class="form-control form-control-sm"
+            formControlName="groupName"
+            placeholder="Group name"
+            [class.is-invalid]="submitted && f['groupName'].invalid"
+          />
+          @if (submitted && f['groupName'].errors?.['required']) {
+            <div class="invalid-feedback">Group name is required.</div>
+          }
+        </div>
+      </div>
+
+      <div class="perm-field" [class.is-invalid]="permissionsInvalid">
+        <div class="perm-toolbar">
+          <div class="perm-title">
+            <span class="form-label mb-0">
+              Permissions <span class="required-mark" aria-hidden="true">*</span>
+            </span>
+            <span class="toolbar-meta">
+              {{ selectedCount | bdNumber:0 }} of {{ totalRoleCount | bdNumber:0 }} selected
+            </span>
+          </div>
+          <div class="perm-toolbar-actions">
+            <label class="perm-select-all">
+              <input
+                type="checkbox"
+                [checked]="allPermissionsSelected"
+                [indeterminate]="somePermissionsSelected"
+                (change)="onToggleAll($event)"
+              />
+              <span>Select all</span>
+            </label>
+            <button type="button" class="btn btn-link perm-link" (click)="expandAll()">
+              Expand all
+            </button>
+            <button type="button" class="btn btn-link perm-link" (click)="collapseAll()">
+              Collapse all
+            </button>
+          </div>
+        </div>
+
+        <div class="perm-tree" role="tree">
+          <div class="perm-column">
+            <ng-container *ngTemplateOutlet="permNodes; context: { $implicit: permissionTreeLeft }" />
+          </div>
+          <div class="perm-column">
+            <ng-container *ngTemplateOutlet="permNodes; context: { $implicit: permissionTreeRight }" />
+          </div>
+        </div>
+        @if (permissionsInvalid) {
+          <div class="invalid-feedback d-block">Select at least one permission.</div>
+        }
+      </div>
+
+      <div class="form-footer">
+        <div class="field-check">
+          <div class="form-check">
+            <input
+              id="enabled"
+              type="checkbox"
+              class="form-check-input"
+              formControlName="enabled"
+            />
+            <label for="enabled" class="form-check-label">Enabled</label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-green btn-sm" (click)="resetForm()" [disabled]="saving">
+            {{ isEditing ? 'Cancel' : 'Clear' }}
+          </button>
+          <button type="submit" class="btn btn-green btn-sm" [disabled]="saving">
+            @if (saving) {
+              {{ isEditing ? 'Updating...' : 'Saving...' }}
+            } @else {
+              {{ isEditing ? 'Update' : 'Save' }}
+            }
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <ng-template #permNodes let-nodes>
+    @for (node of nodes; track node.id) {
+      <div class="perm-node" [class.has-children]="hasChildren(node)" role="treeitem">
+        <div
+          class="perm-row"
+          [class.is-parent]="hasChildren(node)"
+          (click)="hasChildren(node) && toggleExpand(node.id, $event)"
+        >
+          @if (hasChildren(node)) {
+            <button
+              type="button"
+              class="perm-caret"
+              [class.expanded]="isExpanded(node.id)"
+              [attr.aria-expanded]="isExpanded(node.id)"
+              [attr.aria-label]="'Toggle ' + node.label"
+              (click)="toggleExpand(node.id, $event)"
+            ></button>
+          } @else {
+            <span class="perm-caret-spacer" aria-hidden="true"></span>
+          }
+          <label class="perm-check" (click)="$event.stopPropagation()">
+            <input
+              type="checkbox"
+              [checked]="isNodeChecked(node)"
+              [indeterminate]="isNodeIndeterminate(node)"
+              (change)="onNodeToggle(node, $event)"
+            />
+            <span class="perm-label">{{ node.label }}</span>
+            @if (hasChildren(node)) {
+              <span class="perm-count">
+                {{ nodeSelectedCount(node) | bdNumber:0 }}/{{ nodeRoleCount(node) | bdNumber:0 }}
+              </span>
+            }
+          </label>
+        </div>
+        @if (hasChildren(node) && isExpanded(node.id)) {
+          <div class="perm-children" role="group">
+            <ng-container *ngTemplateOutlet="permNodes; context: { $implicit: node.children }" />
+          </div>
+        }
+      </div>
+    }
+  </ng-template>
+
+  <div class="list-shell">
+    <div class="list-toolbar">
+      <div class="toolbar-title">
+        <h2 class="page-title">User Group list</h2>
+        @if (hasLoaded) {
+          <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
+        }
+      </div>
+    </div>
+
+    <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="searchTerm"
+        placeholder="Search"
+        aria-label="Search term"
+      />
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        formControlName="groupName"
+        placeholder="Name"
+        aria-label="Group name"
+      />
+      <ng-select
+        class="filter-ng-select"
+        formControlName="enabled"
+        placeholder="Enabled"
+        [clearable]="true"
+        [searchable]="false"
+        aria-label="Enabled"
+      >
+        <ng-option [value]="true">Enabled: Yes</ng-option>
+        <ng-option [value]="false">Enabled: No</ng-option>
+      </ng-select>
+      <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">Search</button>
+      <button type="button" class="btn btn-outline-green btn-sm" (click)="onReset()" [disabled]="loading">
+        Reset
+      </button>
+    </form>
+
+    <div class="table-wrap">
+      @if (hasLoaded && totalElements === 0) {
+        <div class="state-block">
+          <span class="text-muted">No user groups found.</span>
+        </div>
+      } @else {
+        <div class="app-data-grid" aria-label="User group list">
+          <ag-grid-angular
+            [modules]="gridModules"
+            [theme]="gridTheme"
+            [columnDefs]="columnDefs"
+            [defaultColDef]="defaultColDef"
+            [rowModelType]="'infinite'"
+            [datasource]="dataSource"
+            [pagination]="true"
+            [paginationPageSize]="size"
+            [paginationPageSizeSelector]="false"
+            [paginationNumberFormatter]="paginationNumberFormatter"
+            [cacheBlockSize]="size"
+            [headerHeight]="41"
+            [rowHeight]="41"
+            [animateRows]="false"
+            [suppressCellFocus]="true"
+            [suppressRowHoverHighlight]="false"
+            (gridReady)="onGridReady($event)"
+            (cellClicked)="onCellClicked($event)"
+          />
+        </div>
+      }
+    </div>
+  </div>
+
+  <app-confirm-dialog
+    [open]="!!pendingDelete"
+    [danger]="true"
+    title="Delete user group"
+    [message]="deleteDialogMessage"
+    [detail]="deleteDialogDetail"
+    confirmLabel="Delete"
+    cancelLabel="Cancel"
+    [busy]="!!deletingId"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+</div>

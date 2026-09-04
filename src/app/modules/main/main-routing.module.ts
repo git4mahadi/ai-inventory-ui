@@ -90,6 +90,11 @@ const routes: Routes = [
         loadChildren: () =>
           import('../reports/reports.module').then((m) => m.ReportsModule),
       },
+      {
+        path: 'user-groups',
+        loadChildren: () =>
+          import('../user-groups/user-groups.module').then((m) => m.UserGroupsModule),
+      },
     ],
   },
 ];
