@@ -178,14 +178,16 @@
             <span class="btn-action-icon btn-action-icon-clear" aria-hidden="true"></span>
             <span class="btn-action-label">Clear</span>
           </button>
-          <button
-            type="submit"
-            class="btn-action btn-action-return"
-            [disabled]="submitting || loadingInvoice || selectedReturnQty <= 0"
-          >
-            <span class="btn-action-icon btn-action-icon-return" aria-hidden="true"></span>
-            <span class="btn-action-label">{{ submitting ? 'Saving…' : 'Return' }}</span>
-          </button>
+          @if (canCreate) {
+            <button
+              type="submit"
+              class="btn-action btn-action-return"
+              [disabled]="submitting || loadingInvoice || selectedReturnQty <= 0"
+            >
+              <span class="btn-action-icon btn-action-icon-return" aria-hidden="true"></span>
+              <span class="btn-action-label">{{ submitting ? 'Saving…' : 'Return' }}</span>
+            </button>
+          }
         </div>
       </div>
     </form>

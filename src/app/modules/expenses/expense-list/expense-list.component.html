@@ -1,4 +1,5 @@
 <div class="expense-crud">
+  @if (canCreate) {
   <div class="form-shell">
     <div class="form-toolbar">
       <div class="toolbar-title">
@@ -169,6 +170,7 @@
       </div>
     </form>
   </div>
+  }
 
   <div class="list-shell">
     <div class="list-toolbar">
@@ -364,9 +366,11 @@
               >
                 Cancel
               </button>
-              <button type="submit" class="btn btn-green btn-sm" [disabled]="updating">
-                {{ updating ? 'Updating...' : 'Update' }}
-              </button>
+              @if (canUpdate) {
+                <button type="submit" class="btn btn-green btn-sm" [disabled]="updating">
+                  {{ updating ? 'Updating...' : 'Update' }}
+                </button>
+              }
             </div>
           </div>
         </form>

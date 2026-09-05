@@ -1,4 +1,5 @@
 <div class="fy-crud">
+  @if (showForm) {
   <div #fyFormShell class="form-shell" [class.is-editing]="isEditing">
     <div class="form-toolbar">
       <div class="toolbar-title">
@@ -107,17 +108,20 @@
           <button type="button" class="btn btn-outline-green btn-sm" (click)="resetForm()" [disabled]="saving">
             {{ isEditing ? 'Cancel' : 'Clear' }}
           </button>
-          <button type="submit" class="btn btn-green btn-sm" [disabled]="saving">
-            @if (saving) {
-              {{ isEditing ? 'Updating...' : 'Saving...' }}
-            } @else {
-              {{ isEditing ? 'Update' : 'Save' }}
-            }
-          </button>
+          @if (canSave) {
+            <button type="submit" class="btn btn-green btn-sm" [disabled]="saving">
+              @if (saving) {
+                {{ isEditing ? 'Updating...' : 'Saving...' }}
+              } @else {
+                {{ isEditing ? 'Update' : 'Save' }}
+              }
+            </button>
+          }
         </div>
       </div>
     </form>
   </div>
+  }
 
   <div class="list-shell">
     <div class="list-toolbar">

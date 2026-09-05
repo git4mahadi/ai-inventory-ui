@@ -41,6 +41,12 @@ import { PurchaseOrderApiService } from '../../../services/PurchaseOrderApiServi
 import { StoreApiService } from '../../../services/StoreApiService';
 import { SupplierApiService } from '../../../services/SupplierApiService';
 import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../shared/utils/ag-grid.util';
+import { AuthService } from '../../../core/services/auth.service';
+import {
+  crudAccess,
+  hideActionsColumnIfNeeded,
+  renderCrudActionButtons,
+} from '../../../shared/utils/crud-access.util';
 
 @Component({
   selector: 'app-purchase-order-list',
@@ -148,6 +154,9 @@ export class PurchaseOrderListComponent implements OnInit {
   hasLoaded = false;
   deletingId: string | null = null;
   pendingDelete: PurchaseOrderResponse | null = null;
+  canCreate = false;
+  canUpdate = false;
+  canDelete = false;
   private gridApi?: GridApi<PurchaseOrderResponse>;
 
   page = 0;
@@ -161,8 +170,14 @@ export class PurchaseOrderListComponent implements OnInit {
     private readonly storeApi: StoreApiService,
     private readonly supplierApi: SupplierApiService,
     private readonly toastr: ToastrService,
+    private readonly authService: AuthService,
     private readonly router: Router,
   ) {
+    const access = crudAccess(this.authService, 'ROLE_PURCHASE_ORDER');
+    this.canCreate = access.canCreate;
+    this.canUpdate = access.canUpdate;
+    this.canDelete = access.canDelete;
+    hideActionsColumnIfNeeded(this.columnDefs, access);
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
       storeId: [null as string | null],
@@ -188,9 +203,9 @@ export class PurchaseOrderListComponent implements OnInit {
     }
 
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
-    if (action === 'edit' && event.data.id) {
+    if (action === 'edit' && this.canUpdate && event.data.id) {
       void this.router.navigate(['/purchase-orders/edit', event.data.id]);
-    } else if (action === 'delete') {
+    } else if (action === 'delete' && this.canDelete) {
       this.requestDelete(event.data);
     }
   }
@@ -288,7 +303,7 @@ export class PurchaseOrderListComponent implements OnInit {
   }
 
   requestDelete(row: PurchaseOrderResponse): void {
-    if (!row.id || this.deletingId || !isPurchaseOrderEditable(row.orderStatus)) {
+    if (!row.id || this.deletingId || !this.canDelete || !isPurchaseOrderEditable(row.orderStatus)) {
       return;
     }
     this.pendingDelete = row;
@@ -350,21 +365,14 @@ export class PurchaseOrderListComponent implements OnInit {
     }
 
     const canMutate = isPurchaseOrderEditable(row.orderStatus);
-    const deleteContent =
-      this.deletingId === row.id
-        ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
-        : '<img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />';
-
-    return `
-      <div class="row-actions">
-        <button type="button" class="icon-action icon-edit" data-action="edit" title="Edit" aria-label="Edit purchase order">
-          <img src="/assets/svg/icon-edit.svg" alt="" width="14" height="14" aria-hidden="true" />
-        </button>
-        <button type="button" class="icon-action icon-delete" data-action="delete" title="${canMutate ? 'Delete' : 'Only submitted orders can be deleted'}" aria-label="Delete purchase order"${!canMutate || this.deletingId === row.id ? ' disabled' : ''}>
-          ${deleteContent}
-        </button>
-      </div>
-    `;
+    return renderCrudActionButtons({
+      canUpdate: this.canUpdate,
+      canDelete: this.canDelete,
+      deleting: this.deletingId === row.id,
+      entityLabel: 'purchase order',
+      deleteDisabled: !canMutate,
+      deleteTitle: canMutate ? 'Delete' : 'Only submitted orders can be deleted',
+    });
   }
 
   private loadStores(): void {

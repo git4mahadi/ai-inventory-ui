@@ -39,6 +39,12 @@ import { LookupApiService } from '../../../services/LookupApiService';
 import { StoreApiService } from '../../../services/StoreApiService';
 import { SupplierApiService } from '../../../services/SupplierApiService';
 import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../shared/utils/ag-grid.util';
+import { AuthService } from '../../../core/services/auth.service';
+import {
+  crudAccess,
+  hideActionsColumnIfNeeded,
+  renderCrudActionButtons,
+} from '../../../shared/utils/crud-access.util';
 
 @Component({
   selector: 'app-item-list',
@@ -161,6 +167,9 @@ export class ItemListComponent implements OnInit, OnDestroy {
   editingId: string | null = null;
   deletingId: string | null = null;
   pendingDelete: ItemResponse | null = null;
+  canCreate = false;
+  canUpdate = false;
+  canDelete = false;
   private gridApi?: GridApi<ItemResponse>;
   private readonly destroy$ = new Subject<void>();
 
@@ -178,7 +187,13 @@ export class ItemListComponent implements OnInit, OnDestroy {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly toastr: ToastrService,
+    private readonly authService: AuthService,
   ) {
+    const access = crudAccess(this.authService, 'ROLE_ITEM');
+    this.canCreate = access.canCreate;
+    this.canUpdate = access.canUpdate;
+    this.canDelete = access.canDelete;
+    hideActionsColumnIfNeeded(this.columnDefs, access);
     this.itemForm = this.formBuilder.group({
       itemName: ['', [Validators.required, Validators.maxLength(255)]],
       itemCode: ['', [Validators.required, Validators.maxLength(20)]],
@@ -209,6 +224,14 @@ export class ItemListComponent implements OnInit, OnDestroy {
 
   get f() {
     return this.itemForm.controls;
+  }
+
+  get showForm(): boolean {
+    return this.canCreate || (this.isEditing && this.canUpdate);
+  }
+
+  get canSave(): boolean {
+    return this.isEditing ? this.canUpdate : this.canCreate;
   }
 
   get isEditing(): boolean {
@@ -268,9 +291,9 @@ export class ItemListComponent implements OnInit, OnDestroy {
     }
 
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
-    if (action === 'edit') {
+    if (action === 'edit' && this.canUpdate) {
       this.startEdit(event.data);
-    } else if (action === 'delete') {
+    } else if (action === 'delete' && this.canDelete) {
       this.requestDelete(event.data);
     }
   }
@@ -293,7 +316,7 @@ export class ItemListComponent implements OnInit, OnDestroy {
 
   onSubmit(): void {
     this.submitted = true;
-    if (this.itemForm.invalid || this.saving) {
+    if (this.itemForm.invalid || this.saving || !this.canSave) {
       return;
     }
 
@@ -361,7 +384,7 @@ export class ItemListComponent implements OnInit, OnDestroy {
   }
 
   requestDelete(item: ItemResponse): void {
-    if (!item.id || this.deletingId) {
+    if (!item.id || this.deletingId || !this.canDelete) {
       return;
     }
     this.pendingDelete = item;
@@ -403,6 +426,9 @@ export class ItemListComponent implements OnInit, OnDestroy {
   }
 
   private startEdit(item: ItemResponse): void {
+    if (!this.canUpdate) {
+      return;
+    }
     const normalized = normalizeItem(item);
     if (!normalized?.id) {
       return;
@@ -420,6 +446,10 @@ export class ItemListComponent implements OnInit, OnDestroy {
   }
 
   private loadItemForEdit(id: string): void {
+    if (!this.canUpdate) {
+      this.resetForm();
+      return;
+    }
     this.itemApi.getItemById(id).subscribe({
       next: (item) => this.patchFormForEdit(item),
       error: () => this.resetForm(),
@@ -717,20 +747,12 @@ export class ItemListComponent implements OnInit, OnDestroy {
       return '';
     }
 
-    const deleteContent =
-      this.deletingId === item.id
-        ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
-        : '<img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />';
-
-    return `
-      <div class="row-actions">
-        <button type="button" class="icon-action icon-edit" data-action="edit" title="Edit" aria-label="Edit item">
-          <img src="/assets/svg/icon-edit.svg" alt="" width="14" height="14" aria-hidden="true" />
-        </button>
-        <button type="button" class="icon-action icon-delete" data-action="delete" title="Delete" aria-label="Delete item"${this.deletingId === item.id ? ' disabled' : ''}>
-          ${deleteContent}
-        </button>
-      </div>
-    `;
+    return renderCrudActionButtons({
+      canUpdate: this.canUpdate,
+      canDelete: this.canDelete,
+      deleting: this.deletingId === item.id,
+      entityLabel: 'item',
+    });
   }
+
 }

@@ -23,6 +23,12 @@ import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
 import { ReconcileStockApiService } from '../../../services/ReconcileStockApiService';
 import { StoreApiService } from '../../../services/StoreApiService';
 import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../shared/utils/ag-grid.util';
+import { AuthService } from '../../../core/services/auth.service';
+import {
+  crudAccess,
+  hideActionsColumnIfNeeded,
+  renderCrudActionButtons,
+} from '../../../shared/utils/crud-access.util';
 
 @Component({
   selector: 'app-reconcile-stock-list',
@@ -101,6 +107,9 @@ export class ReconcileStockListComponent implements OnInit {
   hasLoaded = false;
   deletingId: string | null = null;
   pendingDelete: ReconcileStockResponse | null = null;
+  canCreate = false;
+  canUpdate = false;
+  canDelete = false;
   viewOpen = false;
   viewLoading = false;
   viewRecord: ReconcileStockResponse | null = null;
@@ -116,7 +125,13 @@ export class ReconcileStockListComponent implements OnInit {
     private readonly reconcileStockApi: ReconcileStockApiService,
     private readonly storeApi: StoreApiService,
     private readonly toastr: ToastrService,
+    private readonly authService: AuthService,
   ) {
+    const access = crudAccess(this.authService, 'ROLE_RECONCILE_STOCK');
+    this.canCreate = access.canCreate;
+    this.canUpdate = access.canUpdate;
+    this.canDelete = access.canDelete;
+    hideActionsColumnIfNeeded(this.columnDefs, access, true);
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
       storeId: [null as string | null],
@@ -141,7 +156,7 @@ export class ReconcileStockListComponent implements OnInit {
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
     if (action === 'view') {
       this.openView(event.data);
-    } else if (action === 'delete') {
+    } else if (action === 'delete' && this.canDelete) {
       this.requestDelete(event.data);
     }
   }
@@ -184,7 +199,7 @@ export class ReconcileStockListComponent implements OnInit {
   }
 
   requestDelete(row: ReconcileStockResponse): void {
-    if (!row.id || this.deletingId) {
+    if (!row.id || this.deletingId || !this.canDelete) {
       return;
     }
     this.pendingDelete = row;
@@ -307,21 +322,15 @@ export class ReconcileStockListComponent implements OnInit {
       return '';
     }
 
-    const deleteContent =
-      this.deletingId === row.id
-        ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
-        : '<img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />';
-
-    return `
-      <div class="row-actions">
+    return renderCrudActionButtons({
+      canDelete: this.canDelete,
+      deleting: this.deletingId === row.id,
+      entityLabel: 'stock reconcile',
+      extraBefore: `
         <button type="button" class="icon-action icon-view" data-action="view" title="View details" aria-label="View stock reconcile details">
           <span class="icon-graphic" aria-hidden="true"></span>
-        </button>
-        <button type="button" class="icon-action icon-delete" data-action="delete" title="Delete" aria-label="Delete stock reconcile"${this.deletingId === row.id ? ' disabled' : ''}>
-          ${deleteContent}
-        </button>
-      </div>
-    `;
+        </button>`,
+    });
   }
 
   private loadStores(): void {

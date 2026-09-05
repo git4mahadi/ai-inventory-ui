@@ -4,6 +4,7 @@ import { filter, Subscription } from 'rxjs';
 import { AuthService, AuthUser } from '../../../../core/services/auth.service';
 import {
   collectDefaultExpandedIds,
+  filterMenuByAccess,
   findExpandedIdsForUrl,
   SIDEBAR_MENU,
   SidebarMenuNode,
@@ -26,8 +27,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   /** Desktop minimized rail */
   sidebarCollapsed = false;
 
-  /** Dynamic tree from separate menu file */
-  readonly menuTree: SidebarMenuNode[] = SIDEBAR_MENU;
+  /** Visible menu after JWT authority / role filtering */
+  get menuTree(): SidebarMenuNode[] {
+    return filterMenuByAccess(SIDEBAR_MENU, this.authService.getAccessContext());
+  }
 
   /** Expanded parent node ids */
   expandedIds = new Set<string>();
@@ -144,7 +147,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     } catch {
       // ignore corrupt storage
     }
-    return new Set(collectDefaultExpandedIds(this.menuTree));
+    return new Set(collectDefaultExpandedIds(SIDEBAR_MENU));
   }
 
   private persistExpandedIds(): void {

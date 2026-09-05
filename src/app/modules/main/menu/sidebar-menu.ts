@@ -2,6 +2,8 @@
  * Sidebar navigation tree.
  * Add / nest items here — the layout renders this structure dynamically.
  */
+import { AccessContext, MenuRoles } from '../../../core/security/menu-access';
+
 export interface SidebarMenuNode {
   /** Unique key used for expand/collapse state */
   id: string;
@@ -16,6 +18,10 @@ export interface SidebarMenuNode {
   children?: SidebarMenuNode[];
   /** Start expanded when children exist (default false) */
   expandedByDefault?: boolean;
+  /** JWT roles; user needs any one of these (ignored for ADMIN / SUPER_ADMIN) */
+  roles?: readonly string[];
+  /** Only ADMIN / SUPER_ADMIN authority may see this node */
+  requireAdmin?: boolean;
 }
 
 export const SIDEBAR_MENU: SidebarMenuNode[] = [
@@ -37,12 +43,14 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         label: 'Opening Stock List',
         shortLabel: 'OL',
         link: '/opening-stocks/list',
+        roles: MenuRoles.openingStockList,
       },
       {
         id: 'opening-stocks-create',
         label: 'Opening Stock Create',
         shortLabel: 'OC',
         link: '/opening-stocks/create',
+        roles: MenuRoles.openingStockCreate,
       },
     ],
   },
@@ -57,12 +65,14 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         label: 'Purchase Order List',
         shortLabel: 'PL',
         link: '/purchase-orders/list',
+        roles: MenuRoles.purchaseOrderList,
       },
       {
         id: 'purchase-orders-create',
         label: 'Purchase Order Create',
         shortLabel: 'PC',
         link: '/purchase-orders/create',
+        roles: MenuRoles.purchaseOrderCreate,
       },
     ],
   },
@@ -77,12 +87,14 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         label: 'Receive List',
         shortLabel: 'RL',
         link: '/receives/list',
+        roles: MenuRoles.receiveList,
       },
       {
         id: 'receives-create',
         label: 'Receive Create',
         shortLabel: 'RC',
         link: '/receives/create',
+        roles: MenuRoles.receiveCreate,
       },
     ],
   },
@@ -97,36 +109,42 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         label: 'Sales List',
         shortLabel: 'LS',
         link: '/sales/list',
+        roles: MenuRoles.salesList,
       },
       {
         id: 'sales-create',
         label: 'Sales Create',
         shortLabel: 'CS',
         link: '/sales/create',
+        roles: MenuRoles.salesCreate,
       },
       {
         id: 'sales-invoices',
         label: 'Invoices',
         shortLabel: 'IN',
         link: '/sales/invoices',
+        roles: MenuRoles.invoice,
       },
       {
         id: 'sales-due-collection',
         label: 'Due Collection',
         shortLabel: 'DC',
         link: '/sales/due-collection',
+        roles: MenuRoles.dueCollection,
       },
       {
         id: 'sales-return',
         label: 'Sales Return',
         shortLabel: 'RT',
         link: '/sales/sales-return',
+        roles: MenuRoles.salesReturn,
       },
       {
         id: 'sales-stock',
         label: 'Stock',
         shortLabel: 'SK',
         link: '/stores/stock',
+        roles: MenuRoles.stock,
       },
     ],
   },
@@ -135,6 +153,7 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     label: 'Expense',
     shortLabel: 'EX',
     link: '/expenses',
+    roles: MenuRoles.expense,
   },
   {
     id: 'reconcile-stocks',
@@ -147,12 +166,14 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         label: 'Reconcile List',
         shortLabel: 'RS',
         link: '/reconcile-stocks/list',
+        roles: MenuRoles.reconcileStockList,
       },
       {
         id: 'reconcile-stocks-create',
         label: 'Reconcile Create',
         shortLabel: 'CR',
         link: '/reconcile-stocks/create',
+        roles: MenuRoles.reconcileStockCreate,
       },
     ],
   },
@@ -167,24 +188,28 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         label: 'Barcode Generate',
         shortLabel: 'BG',
         link: '/items/barcode-generate',
+        roles: MenuRoles.barcodeGenerate,
       },
       {
         id: 'reports-current-stock',
         label: 'Current Stock',
         shortLabel: 'CS',
         link: '/reports/current-stock',
+        roles: MenuRoles.currentStockReport,
       },
       {
         id: 'reports-expired-stock',
         label: 'Expired Stock',
         shortLabel: 'ES',
         link: '/reports/expired-stock',
+        roles: MenuRoles.expiredStockReport,
       },
       {
         id: 'reports-income-statement',
         label: 'Income Statement',
         shortLabel: 'IS',
         link: '/reports/income-statement',
+        roles: MenuRoles.incomeStatementReport,
       },
     ],
   },
@@ -200,18 +225,21 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         shortLabel: 'IT',
         link: '/items',
         exact: true,
+        roles: MenuRoles.item,
       },
       {
         id: 'setup-customer',
         label: 'Customer',
         shortLabel: 'CU',
         link: '/customers',
+        roles: MenuRoles.customer,
       },
       {
         id: 'setup-supplier',
         label: 'Supplier',
         shortLabel: 'SU',
         link: '/suppliers',
+        roles: MenuRoles.supplier,
       },
       {
         id: 'setup-store',
@@ -219,18 +247,21 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         shortLabel: 'ST',
         link: '/stores',
         exact: true,
+        roles: MenuRoles.store,
       },
       {
         id: 'setup-lookup',
         label: 'Lookup',
         shortLabel: 'LK',
         link: '/lookups',
+        roles: MenuRoles.lookup,
       },
       {
         id: 'setup-financial-year',
         label: 'Financial Year',
         shortLabel: 'FY',
         link: '/financial-years',
+        roles: MenuRoles.financialYear,
       },
     ],
   },
@@ -239,22 +270,62 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
     label: 'Security',
     shortLabel: 'SC',
     expandedByDefault: false,
+    requireAdmin: true,
     children: [
       {
         id: 'security-user-group',
         label: 'User Group',
         shortLabel: 'UG',
         link: '/user-groups',
+        requireAdmin: true,
       },
       {
         id: 'security-user',
         label: 'User',
         shortLabel: 'US',
         link: '/users',
+        requireAdmin: true,
       },
     ],
   },
 ];
+
+export function canSeeMenuNode(node: SidebarMenuNode, access: AccessContext): boolean {
+  if (node.requireAdmin) {
+    return access.isAdmin;
+  }
+  if (access.isAdmin) {
+    return true;
+  }
+  if (!node.roles?.length) {
+    return true;
+  }
+  return node.roles.some((role) => access.roles.has(role));
+}
+
+/** Drop hidden leaves and empty parents according to JWT authority / roles. */
+export function filterMenuByAccess(
+  nodes: SidebarMenuNode[],
+  access: AccessContext,
+): SidebarMenuNode[] {
+  const visible: SidebarMenuNode[] = [];
+  for (const node of nodes) {
+    if (node.requireAdmin && !access.isAdmin) {
+      continue;
+    }
+    if (node.children?.length) {
+      const children = filterMenuByAccess(node.children, access);
+      if (children.length) {
+        visible.push({ ...node, children });
+      }
+      continue;
+    }
+    if (canSeeMenuNode(node, access)) {
+      visible.push(node);
+    }
+  }
+  return visible;
+}
 
 /** Collect all ancestor ids that contain a matching link. */
 export function findExpandedIdsForUrl(

@@ -10,7 +10,6 @@ import {
   ApexFill,
   ApexGrid,
   ApexLegend,
-  ApexNonAxisChartSeries,
   ApexPlotOptions,
   ApexStroke,
   ApexTooltip,
@@ -18,19 +17,14 @@ import {
   ApexYAxis,
 } from 'ng-apexcharts';
 import { formatToBdNumberingSystem } from '../../../../core/utils/bd-number.util';
-import { toApiDate, toDatePickerValue } from '../../../../core/utils/date.util';
-import {
-  paymentMethodLabel,
-  salesStatusLabel,
-} from '../../../../models/enums/SalesStatus';
-import { SalesResponse } from '../../../../models/response/SalesResponse';
+import { toApiDate, toDatePickerValue, toDisplayDate, toOrdinalDisplayDate } from '../../../../core/utils/date.util';
+import { InvoiceCountPointResponse } from '../../../../models/response/InvoiceCountPointResponse';
+import { SalesTrendPointResponse } from '../../../../models/response/SalesTrendPointResponse';
 import { StoreResponse } from '../../../../models/response/StoreResponse';
 import { SummaryResponseV1 } from '../../../../models/response/SummaryResponseV1';
 import { DashboardSummarySearchDto } from '../../../../models/search/DashboardSummarySearchDto';
-import { SalesSearchDto } from '../../../../models/search/SalesSearchDto';
 import { StoreSearchDto } from '../../../../models/search/StoreSearchDto';
 import { DashboardApiService } from '../../../../services/DashboardApiService';
-import { SalesApiService } from '../../../../services/SalesApiService';
 import { StoreApiService } from '../../../../services/StoreApiService';
 
 type SummaryTone = 'green' | 'teal' | 'amber' | 'rose';
@@ -57,18 +51,7 @@ interface RevenueTrendChart {
   legend: ApexLegend;
 }
 
-interface PaymentMixChart {
-  series: ApexNonAxisChartSeries;
-  chart: ApexChart;
-  labels: string[];
-  colors: string[];
-  dataLabels: ApexDataLabels;
-  legend: ApexLegend;
-  plotOptions: ApexPlotOptions;
-  tooltip: ApexTooltip;
-}
-
-interface StatusChart {
+interface InvoiceCountChart {
   series: ApexAxisChartSeries;
   chart: ApexChart;
   colors: string[];
@@ -97,19 +80,18 @@ export class DashboardHomeComponent implements OnInit {
   };
 
   loading = true;
+  loadingInvoiceCount = true;
   loadingStores = false;
   loadingSummary = false;
   submitted = false;
   storeOptions: StoreResponse[] = [];
   summaryCards: SummaryCard[] = this.emptySummaryCards();
   revenueTrendChart: RevenueTrendChart | null = null;
-  paymentMixChart: PaymentMixChart | null = null;
-  statusChart: StatusChart | null = null;
+  invoiceCountChart: InvoiceCountChart | null = null;
 
   constructor(
     private readonly formBuilder: FormBuilder,
     private readonly dashboardApi: DashboardApiService,
-    private readonly salesApi: SalesApiService,
     private readonly storeApi: StoreApiService,
     private readonly toastr: ToastrService,
   ) {
@@ -126,7 +108,6 @@ export class DashboardHomeComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadStores();
-    this.loadChartData();
   }
 
   storeLabel(store: StoreResponse): string {
@@ -148,7 +129,7 @@ export class DashboardHomeComponent implements OnInit {
       return;
     }
 
-    this.loadSummary();
+    this.loadDashboard();
   }
 
   onReset(): void {
@@ -158,7 +139,7 @@ export class DashboardHomeComponent implements OnInit {
       startDate: this.defaultStartDate(),
       endDate: this.defaultEndDate(),
     });
-    this.loadSummary();
+    this.loadDashboard();
   }
 
   private loadStores(): void {
@@ -173,36 +154,50 @@ export class DashboardHomeComponent implements OnInit {
           if (defaultStoreId && !this.searchForm.get('storeId')?.value) {
             this.searchForm.patchValue({ storeId: defaultStoreId });
           }
-          this.loadSummary();
+          this.loadDashboard();
         },
         error: () => {
+          this.loading = false;
+          this.loadingInvoiceCount = false;
           this.summaryCards = this.emptySummaryCards('Failed to load stores');
+          this.revenueTrendChart = this.buildRevenueTrendChart([]);
+          this.invoiceCountChart = this.buildInvoiceCountChart([]);
         },
       });
   }
 
-  private loadSummary(): void {
+  private loadDashboard(): void {
+    this.loadSummary();
+    this.loadSalesTrend();
+    this.loadInvoiceCount();
+  }
+
+  private searchFilter(): DashboardSummarySearchDto | null {
     const storeId = this.searchForm.get('storeId')?.value as string | null;
     const startDate = toApiDate(this.searchForm.get('startDate')?.value);
     const endDate = toApiDate(this.searchForm.get('endDate')?.value);
-    if (!storeId || !startDate || !endDate) {
-      this.summaryCards = this.emptySummaryCards('Select store and date range');
-      return;
+    if (!storeId || !startDate || !endDate || startDate > endDate) {
+      return null;
     }
-    if (startDate > endDate) {
-      this.summaryCards = this.emptySummaryCards('Start date cannot be after end date');
+    return new DashboardSummarySearchDto({ storeId, startDate, endDate });
+  }
+
+  private loadSummary(): void {
+    const search = this.searchFilter();
+    if (!search) {
+      const startDate = toApiDate(this.searchForm.get('startDate')?.value);
+      const endDate = toApiDate(this.searchForm.get('endDate')?.value);
+      if (startDate && endDate && startDate > endDate) {
+        this.summaryCards = this.emptySummaryCards('Start date cannot be after end date');
+      } else {
+        this.summaryCards = this.emptySummaryCards('Select store and date range');
+      }
       return;
     }
 
     this.loadingSummary = true;
     this.dashboardApi
-      .getSummary1(
-        new DashboardSummarySearchDto({
-          storeId,
-          startDate,
-          endDate,
-        }),
-      )
+      .getSummary1(search)
       .pipe(finalize(() => (this.loadingSummary = false)))
       .subscribe({
         next: (summary) => this.applySummary(summary),
@@ -212,14 +207,47 @@ export class DashboardHomeComponent implements OnInit {
       });
   }
 
-  private loadChartData(): void {
+  private loadSalesTrend(): void {
+    const search = this.searchFilter();
+    if (!search) {
+      this.revenueTrendChart = this.buildRevenueTrendChart([]);
+      this.loading = false;
+      return;
+    }
+
     this.loading = true;
-    this.salesApi
-      .searchList(new SalesSearchDto())
+    this.dashboardApi
+      .getSalesTrend(search)
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
-        next: (sales) => this.applySalesData(sales ?? []),
-        error: () => this.applySalesData([]),
+        next: (points) => {
+          this.revenueTrendChart = this.buildRevenueTrendChart(points);
+        },
+        error: () => {
+          this.revenueTrendChart = this.buildRevenueTrendChart([]);
+        },
+      });
+  }
+
+  private loadInvoiceCount(): void {
+    const search = this.searchFilter();
+    if (!search) {
+      this.invoiceCountChart = this.buildInvoiceCountChart([]);
+      this.loadingInvoiceCount = false;
+      return;
+    }
+
+    this.loadingInvoiceCount = true;
+    this.dashboardApi
+      .getInvoiceCount(search)
+      .pipe(finalize(() => (this.loadingInvoiceCount = false)))
+      .subscribe({
+        next: (points) => {
+          this.invoiceCountChart = this.buildInvoiceCountChart(points);
+        },
+        error: () => {
+          this.invoiceCountChart = this.buildInvoiceCountChart([]);
+        },
       });
   }
 
@@ -261,46 +289,16 @@ export class DashboardHomeComponent implements OnInit {
     ];
   }
 
-  private applySalesData(sales: SalesResponse[]): void {
-    const today = this.startOfDay(new Date());
-    const weekStart = this.startOfDay(this.daysAgo(6));
-    const weekSales = sales.filter((sale) => {
-      const date = this.parseSaleDate(sale);
-      return date ? date >= weekStart && date <= today : false;
-    });
-
-    this.revenueTrendChart = this.buildRevenueTrendChart(weekSales, weekStart);
-    this.paymentMixChart = this.buildPaymentMixChart(weekSales);
-    this.statusChart = this.buildStatusChart(weekSales);
-  }
-
-  private buildRevenueTrendChart(
-    weekSales: SalesResponse[],
-    weekStart: Date,
-  ): RevenueTrendChart {
-    const dayBuckets = Array.from({ length: 7 }, (_, index) => {
-      const date = new Date(weekStart);
-      date.setDate(weekStart.getDate() + index);
-      return date;
-    });
-
-    const labels = dayBuckets.map((date) =>
-      date.toLocaleDateString('en-GB', { weekday: 'short' }),
-    );
-    const revenueSeries = dayBuckets.map((date) =>
-      weekSales
-        .filter((sale) => {
-          const saleDate = this.parseSaleDate(sale);
-          return saleDate ? this.sameDay(saleDate, date) : false;
-        })
-        .reduce((total, sale) => total + (sale.totalAmount ?? 0), 0),
-    );
-    const invoiceSeries = dayBuckets.map((date) =>
-      weekSales.filter((sale) => {
-        const saleDate = this.parseSaleDate(sale);
-        return saleDate ? this.sameDay(saleDate, date) : false;
-      }).length,
-    );
+  private buildRevenueTrendChart(points: SalesTrendPointResponse[]): RevenueTrendChart {
+    const labels = points.length
+      ? points.map((point) => this.trendLabel(point.salesDate, points.length))
+      : ['No sales'];
+    const revenueSeries = points.length
+      ? points.map((point) => this.toNumber(point.revenue))
+      : [0];
+    const invoiceSeries = points.length
+      ? points.map((point) => this.toNumber(point.invoiceCount))
+      : [0];
 
     return {
       series: [
@@ -371,69 +369,24 @@ export class DashboardHomeComponent implements OnInit {
     };
   }
 
-  private buildPaymentMixChart(weekSales: SalesResponse[]): PaymentMixChart {
-    const totals = new Map<string, number>();
-    for (const sale of weekSales) {
-      const label = paymentMethodLabel(sale.paymentMethod);
-      totals.set(label, (totals.get(label) ?? 0) + (sale.totalAmount ?? 0));
+  private trendLabel(salesDate: string | undefined, pointCount: number): string {
+    if (pointCount <= 7) {
+      const date = toDatePickerValue(salesDate);
+      if (date) {
+        return date.toLocaleDateString('en-GB', { weekday: 'short' });
+      }
     }
-
-    const labels = [...totals.keys()];
-    const series = labels.map((label) => totals.get(label) ?? 0);
-
-    return {
-      series: series.length ? series : [0],
-      labels: labels.length ? labels : ['No sales'],
-      chart: {
-        type: 'donut',
-        height: 320,
-        fontFamily: "'Segoe UI', system-ui, sans-serif",
-      },
-      colors: ['#1f8054', '#2a9d6a', '#1a7a8c', '#4caf86'],
-      dataLabels: {
-        enabled: true,
-        formatter: (value) => `${Math.round(Number(value))}%`,
-      },
-      legend: {
-        position: 'bottom',
-        fontWeight: 600,
-      },
-      plotOptions: {
-        pie: {
-          donut: {
-            size: '68%',
-            labels: {
-              show: true,
-              total: {
-                show: true,
-                label: 'Revenue',
-                formatter: () =>
-                  this.formatCurrency(series.reduce((total, amount) => total + amount, 0)),
-              },
-            },
-          },
-        },
-      },
-      tooltip: {
-        y: {
-          formatter: (value) => this.formatCurrency(Number(value ?? 0)),
-        },
-      },
-    };
+    return toDisplayDate(salesDate) || '—';
   }
 
-  private buildStatusChart(weekSales: SalesResponse[]): StatusChart {
-    const totals = new Map<string, number>();
-    for (const sale of weekSales) {
-      const label = salesStatusLabel(sale.salesStatus);
-      totals.set(label, (totals.get(label) ?? 0) + 1);
-    }
-
-    const categories = [...totals.keys()];
-    const data = categories.map((label) => totals.get(label) ?? 0);
+  private buildInvoiceCountChart(points: InvoiceCountPointResponse[]): InvoiceCountChart {
+    const labels = points.length
+      ? points.map((point) => toOrdinalDisplayDate(point.salesDate) || '—')
+      : ['No sales'];
+    const data = points.length ? points.map((point) => this.toNumber(point.invoiceCount)) : [0];
 
     return {
-      series: [{ name: 'Invoices', data: data.length ? data : [0] }],
+      series: [{ name: 'Invoices', data }],
       chart: {
         type: 'bar',
         height: 320,
@@ -445,18 +398,25 @@ export class DashboardHomeComponent implements OnInit {
       plotOptions: {
         bar: {
           borderRadius: 8,
-          columnWidth: '46%',
+          columnWidth: points.length > 14 ? '55%' : '46%',
         },
       },
-      dataLabels: { enabled: false },
+      dataLabels: {
+        enabled: true,
+        formatter: (value) => formatToBdNumberingSystem(Number(value ?? 0), 0),
+      },
       grid: {
         borderColor: 'rgba(18, 53, 40, 0.08)',
         strokeDashArray: 4,
       },
       xaxis: {
-        categories: categories.length ? categories : ['No sales'],
+        categories: labels,
         axisBorder: { show: false },
         axisTicks: { show: false },
+        labels: {
+          rotate: points.length > 10 ? -45 : 0,
+          hideOverlappingLabels: false,
+        },
       },
       yaxis: {
         labels: {
@@ -539,27 +499,5 @@ export class DashboardHomeComponent implements OnInit {
       return `${formatToBdNumberingSystem(value / 1000, 1)}K`;
     }
     return formatToBdNumberingSystem(value, 0);
-  }
-
-  private parseSaleDate(sale: SalesResponse): Date | null {
-    return toDatePickerValue(sale.salesDate);
-  }
-
-  private startOfDay(date: Date): Date {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  }
-
-  private daysAgo(days: number): Date {
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    return date;
-  }
-
-  private sameDay(left: Date, right: Date): boolean {
-    return (
-      left.getFullYear() === right.getFullYear() &&
-      left.getMonth() === right.getMonth() &&
-      left.getDate() === right.getDate()
-    );
   }
 }

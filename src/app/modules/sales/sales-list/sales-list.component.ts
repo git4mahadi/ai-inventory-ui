@@ -41,6 +41,12 @@ import { CustomerApiService } from '../../../services/CustomerApiService';
 import { SalesApiService } from '../../../services/SalesApiService';
 import { StoreApiService } from '../../../services/StoreApiService';
 import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../shared/utils/ag-grid.util';
+import { AuthService } from '../../../core/services/auth.service';
+import {
+  crudAccess,
+  hideActionsColumnIfNeeded,
+  renderCrudActionButtons,
+} from '../../../shared/utils/crud-access.util';
 
 @Component({
   selector: 'app-sales-list',
@@ -145,6 +151,9 @@ export class SalesListComponent implements OnInit {
   hasLoaded = false;
   deletingId: string | null = null;
   pendingDelete: SalesResponse | null = null;
+  canCreate = false;
+  canUpdate = false;
+  canDelete = false;
   private gridApi?: GridApi<SalesResponse>;
 
   page = 0;
@@ -158,8 +167,14 @@ export class SalesListComponent implements OnInit {
     private readonly storeApi: StoreApiService,
     private readonly customerApi: CustomerApiService,
     private readonly toastr: ToastrService,
+    private readonly authService: AuthService,
     private readonly router: Router,
   ) {
+    const access = crudAccess(this.authService, 'ROLE_SALES');
+    this.canCreate = access.canCreate;
+    this.canUpdate = access.canUpdate;
+    this.canDelete = access.canDelete;
+    hideActionsColumnIfNeeded(this.columnDefs, access, true);
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
       storeId: [null as string | null],
@@ -185,11 +200,11 @@ export class SalesListComponent implements OnInit {
     }
 
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
-    if (action === 'edit' && event.data.id) {
+    if (action === 'edit' && this.canUpdate && event.data.id) {
       void this.router.navigate(['/sales/edit', event.data.id]);
     } else if (action === 'print' && event.data.id) {
       void this.router.navigate(['/sales/slip', event.data.id], { queryParams: { print: '1' } });
-    } else if (action === 'delete') {
+    } else if (action === 'delete' && this.canDelete) {
       this.requestDelete(event.data);
     }
   }
@@ -254,7 +269,7 @@ export class SalesListComponent implements OnInit {
   }
 
   requestDelete(row: SalesResponse): void {
-    if (!row.id || this.deletingId || !isSalesEditable(row.salesStatus)) {
+    if (!row.id || this.deletingId || !this.canDelete || !isSalesEditable(row.salesStatus)) {
       return;
     }
     this.pendingDelete = row;
@@ -356,24 +371,18 @@ export class SalesListComponent implements OnInit {
     }
 
     const canMutate = isSalesEditable(row.salesStatus);
-    const deleteContent =
-      this.deletingId === row.id
-        ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
-        : '<img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />';
-
-    return `
-      <div class="row-actions">
+    return renderCrudActionButtons({
+      canUpdate: this.canUpdate,
+      canDelete: this.canDelete,
+      deleting: this.deletingId === row.id,
+      entityLabel: 'sale',
+      deleteDisabled: !canMutate,
+      deleteTitle: canMutate ? 'Delete' : 'Only pending sales can be deleted',
+      extraBefore: `
         <button type="button" class="icon-action icon-print" data-action="print" title="Print slip" aria-label="Print POS slip">
           <img src="/assets/svg/icon-print.svg" alt="" width="14" height="14" aria-hidden="true" />
-        </button>
-        <button type="button" class="icon-action icon-edit" data-action="edit" title="Edit" aria-label="Edit sale">
-          <img src="/assets/svg/icon-edit.svg" alt="" width="14" height="14" aria-hidden="true" />
-        </button>
-        <button type="button" class="icon-action icon-delete" data-action="delete" title="${canMutate ? 'Delete' : 'Only pending sales can be deleted'}" aria-label="Delete sale"${!canMutate || this.deletingId === row.id ? ' disabled' : ''}>
-          ${deleteContent}
-        </button>
-      </div>
-    `;
+        </button>`,
+    });
   }
 
   private loadStores(): void {

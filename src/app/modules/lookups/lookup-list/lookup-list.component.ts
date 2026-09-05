@@ -30,6 +30,12 @@ import { LookupResponse } from '../../../models/response/LookupResponse';
 import { LookupSearchDto } from '../../../models/search/LookupSearchDto';
 import { LookupApiService } from '../../../services/LookupApiService';
 import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../shared/utils/ag-grid.util';
+import { AuthService } from '../../../core/services/auth.service';
+import {
+  crudAccess,
+  hideActionsColumnIfNeeded,
+  renderCrudActionButtons,
+} from '../../../shared/utils/crud-access.util';
 
 @Component({
   selector: 'app-lookup-list',
@@ -120,6 +126,9 @@ export class LookupListComponent implements OnInit, OnDestroy {
   editingId: string | null = null;
   deletingId: string | null = null;
   pendingDelete: LookupResponse | null = null;
+  canCreate = false;
+  canUpdate = false;
+  canDelete = false;
 
   page = 0;
   size = 10;
@@ -135,7 +144,13 @@ export class LookupListComponent implements OnInit, OnDestroy {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly toastr: ToastrService,
+    private readonly authService: AuthService,
   ) {
+    const access = crudAccess(this.authService, 'ROLE_LOOKUP');
+    this.canCreate = access.canCreate;
+    this.canUpdate = access.canUpdate;
+    this.canDelete = access.canDelete;
+    hideActionsColumnIfNeeded(this.columnDefs, access);
     this.lookupForm = this.formBuilder.group({
       lookupEnumKey: [null as string | null, Validators.required],
       lookupName: ['', [Validators.required, Validators.maxLength(120)]],
@@ -152,6 +167,14 @@ export class LookupListComponent implements OnInit, OnDestroy {
 
   get f() {
     return this.lookupForm.controls;
+  }
+
+  get showForm(): boolean {
+    return this.canCreate || (this.isEditing && this.canUpdate);
+  }
+
+  get canSave(): boolean {
+    return this.isEditing ? this.canUpdate : this.canCreate;
   }
 
   get isEditing(): boolean {
@@ -217,9 +240,9 @@ export class LookupListComponent implements OnInit, OnDestroy {
     }
 
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
-    if (action === 'edit') {
+    if (action === 'edit' && this.canUpdate) {
       this.startEdit(event.data);
-    } else if (action === 'delete') {
+    } else if (action === 'delete' && this.canDelete) {
       this.requestDelete(event.data);
     }
   }
@@ -239,7 +262,7 @@ export class LookupListComponent implements OnInit, OnDestroy {
 
   onSubmit(): void {
     this.submitted = true;
-    if (this.lookupForm.invalid || this.saving) {
+    if (this.lookupForm.invalid || this.saving || !this.canSave) {
       return;
     }
 
@@ -287,7 +310,7 @@ export class LookupListComponent implements OnInit, OnDestroy {
   }
 
   requestDelete(lookup: LookupResponse): void {
-    if (!lookup.id || this.deletingId) {
+    if (!lookup.id || this.deletingId || !this.canDelete) {
       return;
     }
     this.pendingDelete = lookup;
@@ -329,6 +352,9 @@ export class LookupListComponent implements OnInit, OnDestroy {
   }
 
   private startEdit(lookup: LookupResponse): void {
+    if (!this.canUpdate) {
+      return;
+    }
     const normalized = normalizeLookup(lookup);
     if (!normalized?.id) {
       return;
@@ -346,6 +372,10 @@ export class LookupListComponent implements OnInit, OnDestroy {
   }
 
   private loadLookupForEdit(id: string): void {
+    if (!this.canUpdate) {
+      this.resetForm();
+      return;
+    }
     this.lookupApi.getLookupById(id).subscribe({
       next: (lookup) => this.patchFormForEdit(lookup),
       error: () => this.resetForm(),
@@ -534,20 +564,12 @@ export class LookupListComponent implements OnInit, OnDestroy {
       return '';
     }
 
-    const deleteContent =
-      this.deletingId === lookup.id
-        ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
-        : '<img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />';
-
-    return `
-      <div class="row-actions">
-        <button type="button" class="icon-action icon-edit" data-action="edit" title="Edit" aria-label="Edit lookup">
-          <img src="/assets/svg/icon-edit.svg" alt="" width="14" height="14" aria-hidden="true" />
-        </button>
-        <button type="button" class="icon-action icon-delete" data-action="delete" title="Delete" aria-label="Delete lookup"${this.deletingId === lookup.id ? ' disabled' : ''}>
-          ${deleteContent}
-        </button>
-      </div>
-    `;
+    return renderCrudActionButtons({
+      canUpdate: this.canUpdate,
+      canDelete: this.canDelete,
+      deleting: this.deletingId === lookup.id,
+      entityLabel: 'lookup',
+    });
   }
+
 }

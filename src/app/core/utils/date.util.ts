@@ -56,3 +56,32 @@ export function toDisplayDate(value?: string | null): string {
   const year = `${date.getFullYear()}`.slice(-2);
   return `${day}-${month}-${year}`;
 }
+
+/** Formats an API LocalDate for chart axes as 1st Sep 26. */
+export function toOrdinalDisplayDate(value?: string | null): string {
+  const date = toDatePickerValue(value);
+  if (!date) {
+    return '';
+  }
+  const day = date.getDate();
+  const month = DISPLAY_MONTHS[date.getMonth()];
+  const year = `${date.getFullYear()}`.slice(-2);
+  return `${day}${ordinalSuffix(day)} ${month} ${year}`;
+}
+
+function ordinalSuffix(day: number): string {
+  const teens = day % 100;
+  if (teens >= 11 && teens <= 13) {
+    return 'th';
+  }
+  switch (day % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
+}

@@ -7,10 +7,12 @@
           <span class="toolbar-meta">{{ totalElements | bdNumber }} total</span>
         }
       </div>
-      <a routerLink="/opening-stocks/create" class="btn-create" title="Create opening stock">
-        <span class="icon-plus" aria-hidden="true"></span>
-        <span class="btn-create-label">Create</span>
-      </a>
+      @if (canCreate) {
+        <a routerLink="/opening-stocks/create" class="btn-create" title="Create opening stock">
+          <span class="icon-plus" aria-hidden="true"></span>
+          <span class="btn-create-label">Create</span>
+        </a>
+      }
     </div>
 
     <form class="filter-bar" [formGroup]="searchForm" (ngSubmit)="onSearch()">
@@ -72,7 +74,9 @@
       @if (hasLoaded && totalElements === 0) {
         <div class="state-block">
           <span class="text-muted">No opening stocks found.</span>
-          <a routerLink="/opening-stocks/create" class="btn btn-green btn-sm">Create first</a>
+          @if (canCreate) {
+            <a routerLink="/opening-stocks/create" class="btn btn-green btn-sm">Create first</a>
+          }
         </div>
       } @else {
         <div class="app-data-grid" aria-label="Opening stock list">

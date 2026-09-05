@@ -21,6 +21,7 @@ import { invoiceStatusLabel } from '../../../models/enums/InvoiceStatus';
 import { InvoiceItemResponse } from '../../../models/response/InvoiceItemResponse';
 import { InvoiceResponse } from '../../../models/response/InvoiceResponse';
 import { InvoiceSearchDto } from '../../../models/search/InvoiceSearchDto';
+import { AuthService } from '../../../core/services/auth.service';
 import { InvoiceApiService } from '../../../services/InvoiceApiService';
 import { ReturnApiService } from '../../../services/ReturnApiService';
 
@@ -64,13 +65,16 @@ export class SalesReturnComponent {
   submitting = false;
   submitted = false;
   confirmOpen = false;
+  canCreate = false;
 
   constructor(
     private readonly formBuilder: FormBuilder,
     private readonly invoiceApi: InvoiceApiService,
     private readonly returnApi: ReturnApiService,
     private readonly toastr: ToastrService,
+    private readonly authService: AuthService,
   ) {
+    this.canCreate = this.authService.can('ROLE_RETURN_CREATE_SALES');
     this.returnForm = this.formBuilder.group({
       invoiceId: [null as string | null, Validators.required],
       returnDate: [new Date(), Validators.required],
@@ -144,6 +148,9 @@ export class SalesReturnComponent {
   }
 
   onSubmit(): void {
+    if (!this.canCreate) {
+      return;
+    }
     this.submitted = true;
     if (this.returnForm.invalid || !this.invoice?.id) {
       this.toastr.warning('Select an invoice and return date.');
@@ -163,7 +170,7 @@ export class SalesReturnComponent {
   }
 
   confirmReturn(): void {
-    if (!this.invoice?.id || !this.invoice.storeId) {
+    if (!this.canCreate || !this.invoice?.id || !this.invoice.storeId) {
       this.confirmOpen = false;
       return;
     }

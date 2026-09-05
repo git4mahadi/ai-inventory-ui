@@ -1,10 +1,6 @@
 <div class="dashboard-home">
   <div class="page-header mb-4">
-    <p class="page-eyebrow mb-1">Overview</p>
-    <h1 class="page-title h4 mb-1">Sales dashboard</h1>
-    <p class="text-muted small mb-0">
-      Sales, collection, due, and stock for the selected store and date range.
-    </p>
+    <h1 class="page-title h4 mb-0">Sales Dashboard</h1>
   </div>
 
   <form class="filter-bar mb-3" [formGroup]="searchForm" (ngSubmit)="onSearch()">
@@ -44,14 +40,14 @@
       aria-label="End date"
       [class.is-invalid]="submitted && f['endDate'].invalid"
     />
-    <button type="submit" class="btn btn-green btn-sm" [disabled]="loadingSummary">
-      {{ loadingSummary ? 'Loading...' : 'Search' }}
+    <button type="submit" class="btn btn-green btn-sm" [disabled]="loadingSummary || loading || loadingInvoiceCount">
+      {{ loadingSummary || loading || loadingInvoiceCount ? 'Loading...' : 'Search' }}
     </button>
     <button
       type="button"
       class="btn btn-outline-green btn-sm"
       (click)="onReset()"
-      [disabled]="loadingSummary"
+      [disabled]="loadingSummary || loading || loadingInvoiceCount"
     >
       Reset
     </button>
@@ -72,91 +68,69 @@
     }
   </div>
 
-  @if (loading) {
-    <div class="dashboard-loading rounded-3">
-      <span class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></span>
-      <span>Loading sales analytics…</span>
+  <div class="row g-3">
+    <div class="col-12">
+      <section class="chart-panel chart-panel--wide">
+        <div class="chart-panel__header">
+          <div>
+            <h2 class="chart-panel__title">Weekly Sales Trend</h2>
+            <p class="chart-panel__subtitle">Revenue and invoice count for the selected date range</p>
+          </div>
+        </div>
+        @if (loading) {
+          <div class="dashboard-loading rounded-3">
+            <span class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></span>
+            <span>Loading sales trend…</span>
+          </div>
+        } @else if (revenueTrendChart) {
+          <div class="chart-wrap">
+            <apx-chart
+              [series]="revenueTrendChart.series"
+              [chart]="revenueTrendChart.chart"
+              [colors]="revenueTrendChart.colors"
+              [dataLabels]="revenueTrendChart.dataLabels"
+              [stroke]="revenueTrendChart.stroke"
+              [fill]="revenueTrendChart.fill"
+              [grid]="revenueTrendChart.grid"
+              [xaxis]="revenueTrendChart.xaxis"
+              [yaxis]="revenueTrendChart.yaxis"
+              [tooltip]="revenueTrendChart.tooltip"
+              [legend]="revenueTrendChart.legend"
+            ></apx-chart>
+          </div>
+        }
+      </section>
     </div>
-  } @else {
-    <div class="row g-3">
-      <div class="col-12 col-xl-8">
-        <section class="chart-panel chart-panel--wide h-100">
-          <div class="chart-panel__header">
-            <div>
-              <h2 class="chart-panel__title">Weekly sales trend</h2>
-              <p class="chart-panel__subtitle">Revenue and invoice count for the last 7 days</p>
-            </div>
-          </div>
-          @if (revenueTrendChart) {
-            <div class="chart-wrap">
-              <apx-chart
-                [series]="revenueTrendChart.series"
-                [chart]="revenueTrendChart.chart"
-                [colors]="revenueTrendChart.colors"
-                [dataLabels]="revenueTrendChart.dataLabels"
-                [stroke]="revenueTrendChart.stroke"
-                [fill]="revenueTrendChart.fill"
-                [grid]="revenueTrendChart.grid"
-                [xaxis]="revenueTrendChart.xaxis"
-                [yaxis]="revenueTrendChart.yaxis"
-                [tooltip]="revenueTrendChart.tooltip"
-                [legend]="revenueTrendChart.legend"
-              ></apx-chart>
-            </div>
-          }
-        </section>
-      </div>
 
-      <div class="col-12 col-xl-4">
-        <section class="chart-panel h-100">
-          <div class="chart-panel__header">
-            <div>
-              <h2 class="chart-panel__title">Payment mix</h2>
-              <p class="chart-panel__subtitle">Revenue share by payment method</p>
-            </div>
+    <div class="col-12">
+      <section class="chart-panel">
+        <div class="chart-panel__header">
+          <div>
+            <h2 class="chart-panel__title">Invoice Count</h2>
+            <p class="chart-panel__subtitle">Date-wise invoice count for the selected date range</p>
           </div>
-          @if (paymentMixChart) {
-            <div class="chart-wrap chart-wrap--compact">
-              <apx-chart
-                [series]="paymentMixChart.series"
-                [chart]="paymentMixChart.chart"
-                [labels]="paymentMixChart.labels"
-                [colors]="paymentMixChart.colors"
-                [dataLabels]="paymentMixChart.dataLabels"
-                [legend]="paymentMixChart.legend"
-                [plotOptions]="paymentMixChart.plotOptions"
-                [tooltip]="paymentMixChart.tooltip"
-              ></apx-chart>
-            </div>
-          }
-        </section>
-      </div>
-
-      <div class="col-12">
-        <section class="chart-panel">
-          <div class="chart-panel__header">
-            <div>
-              <h2 class="chart-panel__title">Invoice status</h2>
-              <p class="chart-panel__subtitle">Sales volume by status in the last 7 days</p>
-            </div>
+        </div>
+        @if (loadingInvoiceCount) {
+          <div class="dashboard-loading rounded-3">
+            <span class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></span>
+            <span>Loading invoice count…</span>
           </div>
-          @if (statusChart) {
-            <div class="chart-wrap chart-wrap--bar">
-              <apx-chart
-                [series]="statusChart.series"
-                [chart]="statusChart.chart"
-                [colors]="statusChart.colors"
-                [plotOptions]="statusChart.plotOptions"
-                [dataLabels]="statusChart.dataLabels"
-                [grid]="statusChart.grid"
-                [xaxis]="statusChart.xaxis"
-                [yaxis]="statusChart.yaxis"
-                [tooltip]="statusChart.tooltip"
-              ></apx-chart>
-            </div>
-          }
-        </section>
-      </div>
+        } @else if (invoiceCountChart) {
+          <div class="chart-wrap chart-wrap--bar">
+            <apx-chart
+              [series]="invoiceCountChart.series"
+              [chart]="invoiceCountChart.chart"
+              [colors]="invoiceCountChart.colors"
+              [plotOptions]="invoiceCountChart.plotOptions"
+              [dataLabels]="invoiceCountChart.dataLabels"
+              [grid]="invoiceCountChart.grid"
+              [xaxis]="invoiceCountChart.xaxis"
+              [yaxis]="invoiceCountChart.yaxis"
+              [tooltip]="invoiceCountChart.tooltip"
+            ></apx-chart>
+          </div>
+        }
+      </section>
     </div>
-  }
+  </div>
 </div>

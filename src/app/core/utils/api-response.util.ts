@@ -11,7 +11,9 @@ import { OpeningStockResponse } from '../../models/response/OpeningStockResponse
 import { PurchaseOrderResponse } from '../../models/response/PurchaseOrderResponse';
 import { ReceiveResponse } from '../../models/response/ReceiveResponse';
 import { ReconcileStockResponse } from '../../models/response/ReconcileStockResponse';
+import { InvoiceCountPointResponse } from '../../models/response/InvoiceCountPointResponse';
 import { SalesResponse } from '../../models/response/SalesResponse';
+import { SalesTrendPointResponse } from '../../models/response/SalesTrendPointResponse';
 import { SummaryResponseV1 } from '../../models/response/SummaryResponseV1';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
 import { UserGroupResponse } from '../../models/response/UserGroupResponse';
@@ -404,6 +406,84 @@ export function normalizeSummaryV1(payload: unknown): SummaryResponseV1 | null {
   }
 
   return null;
+}
+
+/** Resolves dashboard daily sales-trend points from a raw or `{ data }` envelope. */
+export function normalizeSalesTrend(payload: unknown): SalesTrendPointResponse[] {
+  if (Array.isArray(payload)) {
+    return payload
+      .map((item) => normalizeSalesTrendPoint(item))
+      .filter((item): item is SalesTrendPointResponse => !!item);
+  }
+
+  if (payload && typeof payload === 'object') {
+    const value = payload as Record<string, unknown>;
+    if (Array.isArray(value['data'])) {
+      return normalizeSalesTrend(value['data']);
+    }
+  }
+
+  return [];
+}
+
+function normalizeSalesTrendPoint(payload: unknown): SalesTrendPointResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+  if (!('salesDate' in value) && !('revenue' in value) && !('invoiceCount' in value)) {
+    return null;
+  }
+
+  return {
+    salesDate: typeof value['salesDate'] === 'string' ? value['salesDate'] : undefined,
+    revenue: toFiniteNumber(value['revenue']),
+    invoiceCount: toFiniteNumber(value['invoiceCount']),
+  };
+}
+
+function toFiniteNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeSalesDate(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+/** Resolves dashboard date-wise invoice-count points from a raw or `{ data }` envelope. */
+export function normalizeInvoiceCount(payload: unknown): InvoiceCountPointResponse[] {
+  if (Array.isArray(payload)) {
+    return payload
+      .map((item) => normalizeInvoiceCountPoint(item))
+      .filter((item): item is InvoiceCountPointResponse => !!item);
+  }
+
+  if (payload && typeof payload === 'object') {
+    const value = payload as Record<string, unknown>;
+    if (Array.isArray(value['data'])) {
+      return normalizeInvoiceCount(value['data']);
+    }
+  }
+
+  return [];
+}
+
+function normalizeInvoiceCountPoint(payload: unknown): InvoiceCountPointResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+  if (!('salesDate' in value) && !('invoiceCount' in value)) {
+    return null;
+  }
+
+  return {
+    salesDate: normalizeSalesDate(value['salesDate']),
+    invoiceCount: toFiniteNumber(value['invoiceCount']),
+  };
 }
 
 /** Resolves a user group entity from a raw or `{ data: userGroup }` payload. */

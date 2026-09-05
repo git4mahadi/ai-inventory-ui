@@ -30,6 +30,12 @@ import {
   appGridModules,
   appGridTheme,
 } from '../../../shared/utils/ag-grid.util';
+import { AuthService } from '../../../core/services/auth.service';
+import {
+  crudAccess,
+  hideActionsColumnIfNeeded,
+  renderCrudActionButtons,
+} from '../../../shared/utils/crud-access.util';
 
 @Component({
   selector: 'app-user-group-list',
@@ -110,6 +116,9 @@ export class UserGroupListComponent implements OnInit {
   editingId: string | null = null;
   deletingId: string | null = null;
   pendingDelete: UserGroupResponse | null = null;
+  canCreate = false;
+  canUpdate = false;
+  canDelete = false;
   selectedRoles = new Set<string>();
   expandedIds = new Set<string>();
   page = 0;
@@ -126,7 +135,13 @@ export class UserGroupListComponent implements OnInit {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly toastr: ToastrService,
+    private readonly authService: AuthService,
   ) {
+    const access = crudAccess(this.authService, 'ROLE_USER_GROUP');
+    this.canCreate = access.canCreate;
+    this.canUpdate = access.canUpdate;
+    this.canDelete = access.canDelete;
+    hideActionsColumnIfNeeded(this.columnDefs, access);
     this.userGroupForm = this.formBuilder.group({
       groupName: ['', [Validators.required, Validators.maxLength(100)]],
       enabled: [true],
@@ -140,6 +155,14 @@ export class UserGroupListComponent implements OnInit {
 
   get f() {
     return this.userGroupForm.controls;
+  }
+
+  get showForm(): boolean {
+    return this.canCreate || (this.isEditing && this.canUpdate);
+  }
+
+  get canSave(): boolean {
+    return this.isEditing ? this.canUpdate : this.canCreate;
   }
 
   get isEditing(): boolean {
@@ -188,9 +211,9 @@ export class UserGroupListComponent implements OnInit {
     }
 
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
-    if (action === 'edit') {
+    if (action === 'edit' && this.canUpdate) {
       this.startEdit(event.data);
-    } else if (action === 'delete') {
+    } else if (action === 'delete' && this.canDelete) {
       this.requestDelete(event.data);
     }
   }
@@ -210,7 +233,7 @@ export class UserGroupListComponent implements OnInit {
 
   onSubmit(): void {
     this.submitted = true;
-    if (this.userGroupForm.invalid || this.selectedRoles.size === 0 || this.saving) {
+    if (this.userGroupForm.invalid || this.selectedRoles.size === 0 || this.saving || !this.canSave) {
       return;
     }
 
@@ -252,7 +275,7 @@ export class UserGroupListComponent implements OnInit {
   }
 
   requestDelete(group: UserGroupResponse): void {
-    if (!group.id || this.deletingId) {
+    if (!group.id || this.deletingId || !this.canDelete) {
       return;
     }
     this.pendingDelete = group;
@@ -372,6 +395,9 @@ export class UserGroupListComponent implements OnInit {
   }
 
   private startEdit(group: UserGroupResponse): void {
+    if (!this.canUpdate) {
+      return;
+    }
     const normalized = normalizeUserGroup(group);
     if (!normalized?.id) {
       return;
@@ -390,6 +416,10 @@ export class UserGroupListComponent implements OnInit {
   }
 
   private loadUserGroupForEdit(id: string): void {
+    if (!this.canUpdate) {
+      this.resetForm();
+      return;
+    }
     this.userGroupApi.getUserGroupById(id).subscribe({
       next: (group) => this.patchFormForEdit(group),
       error: () => this.resetForm(),
@@ -525,20 +555,12 @@ export class UserGroupListComponent implements OnInit {
       return '';
     }
 
-    const deleteContent =
-      this.deletingId === group.id
-        ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
-        : '<img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />';
-
-    return `
-      <div class="row-actions">
-        <button type="button" class="icon-action icon-edit" data-action="edit" title="Edit" aria-label="Edit user group">
-          <img src="/assets/svg/icon-edit.svg" alt="" width="14" height="14" aria-hidden="true" />
-        </button>
-        <button type="button" class="icon-action icon-delete" data-action="delete" title="Delete" aria-label="Delete user group"${this.deletingId === group.id ? ' disabled' : ''}>
-          ${deleteContent}
-        </button>
-      </div>
-    `;
+    return renderCrudActionButtons({
+      canUpdate: this.canUpdate,
+      canDelete: this.canDelete,
+      deleting: this.deletingId === group.id,
+      entityLabel: 'user group',
+    });
   }
+
 }

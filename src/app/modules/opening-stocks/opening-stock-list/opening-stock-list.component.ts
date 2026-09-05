@@ -27,6 +27,12 @@ import { FinancialYearApiService } from '../../../services/FinancialYearApiServi
 import { OpeningStockApiService } from '../../../services/OpeningStockApiService';
 import { StoreApiService } from '../../../services/StoreApiService';
 import { appGridDefaultColDef, appGridModules, appGridTheme } from '../../../shared/utils/ag-grid.util';
+import { AuthService } from '../../../core/services/auth.service';
+import {
+  crudAccess,
+  hideActionsColumnIfNeeded,
+  renderCrudActionButtons,
+} from '../../../shared/utils/crud-access.util';
 
 @Component({
   selector: 'app-opening-stock-list',
@@ -115,6 +121,9 @@ export class OpeningStockListComponent implements OnInit {
   hasLoaded = false;
   deletingId: string | null = null;
   pendingDelete: OpeningStockResponse | null = null;
+  canCreate = false;
+  canUpdate = false;
+  canDelete = false;
   private gridApi?: GridApi<OpeningStockResponse>;
 
   page = 0;
@@ -128,8 +137,14 @@ export class OpeningStockListComponent implements OnInit {
     private readonly storeApi: StoreApiService,
     private readonly financialYearApi: FinancialYearApiService,
     private readonly toastr: ToastrService,
+    private readonly authService: AuthService,
     private readonly router: Router,
   ) {
+    const access = crudAccess(this.authService, 'ROLE_OPENING_STOCK');
+    this.canCreate = access.canCreate;
+    this.canUpdate = access.canUpdate;
+    this.canDelete = access.canDelete;
+    hideActionsColumnIfNeeded(this.columnDefs, access);
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
       challanNo: [''],
@@ -154,9 +169,9 @@ export class OpeningStockListComponent implements OnInit {
     }
 
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
-    if (action === 'edit' && event.data.id) {
+    if (action === 'edit' && this.canUpdate && event.data.id) {
       void this.router.navigate(['/opening-stocks/edit', event.data.id]);
-    } else if (action === 'delete') {
+    } else if (action === 'delete' && this.canDelete) {
       this.requestDelete(event.data);
     }
   }
@@ -256,7 +271,7 @@ export class OpeningStockListComponent implements OnInit {
   }
 
   requestDelete(row: OpeningStockResponse): void {
-    if (!row.id || this.deletingId) {
+    if (!row.id || this.deletingId || !this.canDelete) {
       return;
     }
     this.pendingDelete = row;
@@ -317,21 +332,12 @@ export class OpeningStockListComponent implements OnInit {
       return '';
     }
 
-    const deleteContent =
-      this.deletingId === row.id
-        ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
-        : '<img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />';
-
-    return `
-      <div class="row-actions">
-        <button type="button" class="icon-action icon-edit" data-action="edit" title="Edit" aria-label="Edit opening stock">
-          <img src="/assets/svg/icon-edit.svg" alt="" width="14" height="14" aria-hidden="true" />
-        </button>
-        <button type="button" class="icon-action icon-delete" data-action="delete" title="Delete" aria-label="Delete opening stock"${this.deletingId === row.id ? ' disabled' : ''}>
-          ${deleteContent}
-        </button>
-      </div>
-    `;
+    return renderCrudActionButtons({
+      canUpdate: this.canUpdate,
+      canDelete: this.canDelete,
+      deleting: this.deletingId === row.id,
+      entityLabel: 'opening stock',
+    });
   }
 
   private loadLookups(): void {
