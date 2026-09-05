@@ -75,3 +75,47 @@ export function toNumber(value: number | string | null | undefined): number {
 export function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
+
+/** Keep digits and at most one decimal point (for text qty/rate inputs). */
+export function sanitizeDecimalInput(value: string): string {
+  const cleaned = value.replace(/[^\d.]/g, '');
+  const dot = cleaned.indexOf('.');
+  if (dot === -1) {
+    return cleaned;
+  }
+  return cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, '');
+}
+
+/** Block non-decimal keystrokes on text inputs that should accept numbers. */
+export function onDecimalKeydown(event: KeyboardEvent): void {
+  if (event.ctrlKey || event.metaKey || event.altKey) {
+    return;
+  }
+
+  const allowedKeys = [
+    'Backspace',
+    'Delete',
+    'Tab',
+    'Escape',
+    'Enter',
+    'ArrowLeft',
+    'ArrowRight',
+    'Home',
+    'End',
+  ];
+  if (allowedKeys.includes(event.key)) {
+    return;
+  }
+
+  if (event.key === '.') {
+    const input = event.target as HTMLInputElement | null;
+    if (input?.value.includes('.')) {
+      event.preventDefault();
+    }
+    return;
+  }
+
+  if (!/^\d$/.test(event.key)) {
+    event.preventDefault();
+  }
+}

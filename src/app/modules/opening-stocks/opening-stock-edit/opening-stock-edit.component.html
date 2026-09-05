@@ -155,11 +155,13 @@
                     </td>
                     <td class="col-qty">
                       <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
                         class="form-control form-control-sm"
                         formControlName="stockQty"
+                        (keydown)="onDecimalKeydown($event)"
+                        (input)="onDecimalFieldInput($index, 'stockQty', $event)"
                         [class.is-invalid]="submitted && itemRow($index).controls['stockQty'].invalid"
                       />
                     </td>
@@ -201,21 +203,25 @@
                     </td>
                     <td class="col-rate">
                       <input
-                        type="number"
-                        min="0"
-                        step="0.01"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
                         class="form-control form-control-sm"
                         formControlName="purchaseRate"
+                        (keydown)="onDecimalKeydown($event)"
+                        (input)="onDecimalFieldInput($index, 'purchaseRate', $event)"
                         [class.is-invalid]="submitted && itemRow($index).controls['purchaseRate'].invalid"
                       />
                     </td>
                     <td class="col-rate">
                       <input
-                        type="number"
-                        min="0"
-                        step="0.01"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
                         class="form-control form-control-sm"
                         formControlName="salesRate"
+                        (keydown)="onDecimalKeydown($event)"
+                        (input)="onDecimalFieldInput($index, 'salesRate', $event)"
                         [class.is-invalid]="submitted && itemRow($index).controls['salesRate'].invalid"
                       />
                     </td>

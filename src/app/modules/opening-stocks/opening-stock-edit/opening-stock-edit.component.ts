@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import {
@@ -16,6 +16,11 @@ import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { generateBatchNo } from '../../../core/utils/batch-no.util';
 import { toApiDate, toDatePickerValue } from '../../../core/utils/date.util';
+import {
+  onDecimalKeydown,
+  sanitizeDecimalInput,
+  toNumber,
+} from '../../../core/utils/sales-cart.util';
 import { OpeningStockDto } from '../../../models/dto/OpeningStockDto';
 import { OpeningStockItemDto } from '../../../models/dto/OpeningStockItemDto';
 import { LookupEnum } from '../../../models/enums/LookupEnum';
@@ -57,6 +62,41 @@ export class OpeningStockEditComponent implements OnInit, OnDestroy {
   readonly expireDatePickerConfig: Partial<BsDatepickerConfig> = {
     ...this.datePickerConfig,
     startView: 'year',
+  };
+  readonly onDecimalKeydown = onDecimalKeydown;
+  private readonly positiveQtyValidator: ValidatorFn = (
+    control: AbstractControl,
+  ): ValidationErrors | null => {
+    const raw = control.value;
+    if (raw === null || raw === undefined || String(raw).trim() === '') {
+      return { required: true };
+    }
+    const text = String(raw).trim();
+    if (text !== sanitizeDecimalInput(text) || text === '.' || !Number.isFinite(Number(text))) {
+      return { number: true };
+    }
+    const qty = toNumber(text);
+    if (qty < 0.01) {
+      return { min: { min: 0.01, actual: qty } };
+    }
+    return null;
+  };
+  private readonly nonNegativeNumberValidator: ValidatorFn = (
+    control: AbstractControl,
+  ): ValidationErrors | null => {
+    const raw = control.value;
+    if (raw === null || raw === undefined || String(raw).trim() === '') {
+      return { required: true };
+    }
+    const text = String(raw).trim();
+    if (text !== sanitizeDecimalInput(text) || text === '.' || !Number.isFinite(Number(text))) {
+      return { number: true };
+    }
+    const amount = toNumber(text);
+    if (amount < 0) {
+      return { min: { min: 0, actual: amount } };
+    }
+    return null;
   };
 
   storeOptions: StoreResponse[] = [];
@@ -111,8 +151,8 @@ export class OpeningStockEditComponent implements OnInit, OnDestroy {
 
   get itemsTotal(): number {
     return this.itemRows.controls.reduce((sum, row) => {
-      const qty = Number(row.get('stockQty')?.value || 0);
-      const rate = Number(row.get('purchaseRate')?.value || 0);
+      const qty = toNumber(row.get('stockQty')?.value);
+      const rate = toNumber(row.get('purchaseRate')?.value);
       return sum + qty * rate;
     }, 0);
   }
@@ -233,12 +273,12 @@ export class OpeningStockEditComponent implements OnInit, OnDestroy {
           supplierId: rowValue.supplierId || undefined,
           itemId: rowValue.itemId,
           itemName: rowValue.itemName?.trim() || undefined,
-          stockQty: Number(rowValue.stockQty),
+          stockQty: toNumber(rowValue.stockQty),
           uom: this.resolveUomName(rowValue.uom),
           batchNo: rowValue.batchNo?.trim(),
           expireDate: toApiDate(rowValue.expireDate),
-          purchaseRate: Number(rowValue.purchaseRate),
-          salesRate: Number(rowValue.salesRate),
+          purchaseRate: toNumber(rowValue.purchaseRate),
+          salesRate: toNumber(rowValue.salesRate),
         });
       }),
     });
@@ -317,16 +357,31 @@ export class OpeningStockEditComponent implements OnInit, OnDestroy {
       supplierId: [item?.supplierId ?? null],
       itemId: [item?.itemId ?? null, Validators.required],
       itemName: [item?.itemName ?? ''],
-      stockQty: [item?.stockQty ?? null, [Validators.required, Validators.min(0.01)]],
+      stockQty: [item?.stockQty ?? null, [Validators.required, this.positiveQtyValidator]],
       uom: [null as string | null],
       batchNo: [
         item?.batchNo || this.nextBatchNo(),
         [Validators.required, Validators.maxLength(30)],
       ],
       expireDate: [toDatePickerValue(item?.expireDate), []],
-      purchaseRate: [item?.purchaseRate ?? null, [Validators.required, Validators.min(0)]],
-      salesRate: [item?.salesRate ?? null, [Validators.required, Validators.min(0)]],
+      purchaseRate: [item?.purchaseRate ?? null, [Validators.required, this.nonNegativeNumberValidator]],
+      salesRate: [item?.salesRate ?? null, [Validators.required, this.nonNegativeNumberValidator]],
     });
+  }
+
+  onDecimalFieldInput(
+    index: number,
+    controlName: 'stockQty' | 'purchaseRate' | 'salesRate',
+    event: Event,
+  ): void {
+    const input = event.target as HTMLInputElement;
+    const sanitized = sanitizeDecimalInput(input.value);
+    if (sanitized !== input.value) {
+      input.value = sanitized;
+    }
+    this.itemRow(index)
+      .get(controlName)
+      ?.setValue(sanitized === '' ? null : sanitized);
   }
 
   private nextBatchNo(): string {

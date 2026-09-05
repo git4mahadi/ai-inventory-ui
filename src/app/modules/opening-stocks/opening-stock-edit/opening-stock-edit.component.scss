@@ -284,14 +284,17 @@
     width: 9rem;
   }
 
-  .col-qty,
+  .col-qty {
+    width: 10.5rem;
+  }
+
   .col-rate {
     width: 6.5rem;
   }
 
   .col-batch {
-    min-width: 12.5rem;
-    width: 14rem;
+    min-width: 10rem;
+    width: 11.5rem;
 
     .form-control-sm[readonly] {
       background-color: #f7fbf8;
@@ -304,8 +307,8 @@
   }
 
   .col-supplier {
-    min-width: 10rem;
-    width: 16%;
+    min-width: 7rem;
+    width: 10%;
   }
 
   .col-remove {

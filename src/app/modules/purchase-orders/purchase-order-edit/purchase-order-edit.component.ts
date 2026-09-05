@@ -219,6 +219,9 @@ export class PurchaseOrderEditComponent implements OnInit, OnDestroy {
     }
     if (this.purchaseOrderForm.invalid || this.loading || !this.purchaseOrderId) {
       this.purchaseOrderForm.markAllAsTouched();
+      if (!this.purchaseOrderForm.get('supplierId')?.value) {
+        this.toastr.error('Select Supplier !!!');
+      }
       return;
     }
 

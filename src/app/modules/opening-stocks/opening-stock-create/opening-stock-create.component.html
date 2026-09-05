@@ -138,18 +138,21 @@
             <label class="form-label">Quantity</label>
             <input
               #pickerQuantityInput
-              type="number"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
               class="form-control form-control-sm"
               formControlName="quantity"
-              min="0"
-              step="0.01"
               placeholder="Qty"
-              (keydown.enter)="onPickerQuantityEnter($event)"
+              (keydown)="onDecimalKeydown($event)"
+              (input)="onPickerQuantityInput($event)"
+              (keydown.enter)="onPickerAddEnter($event)"
             />
           </div>
           <div class="field">
             <label class="form-label">Expire</label>
             <input
+              #pickerExpireInput
               type="text"
               class="form-control form-control-sm"
               formControlName="expireDate"
@@ -157,6 +160,8 @@
               [bsConfig]="expireDatePickerConfig"
               placeholder="Date"
               autocomplete="off"
+              (bsValueChange)="onPickerExpireDateChange($event)"
+              (keydown.enter)="onPickerAddEnter($event)"
             />
           </div>
           <div class="picker-action">
@@ -210,13 +215,14 @@
                     </td>
                     <td class="col-qty">
                       <input
-                        type="number"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
                         class="form-control form-control-sm"
                         [ngModel]="item.stockQty"
                         (ngModelChange)="onCartQtyChange(i, $event)"
                         [ngModelOptions]="{ standalone: true }"
-                        min="0.01"
-                        step="0.01"
+                        (keydown)="onDecimalKeydown($event)"
                       />
                     </td>
                     <td class="col-uom">
@@ -261,24 +267,26 @@
                     </td>
                     <td class="col-rate">
                       <input
-                        type="number"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
                         class="form-control form-control-sm"
                         [ngModel]="item.purchaseRate"
                         (ngModelChange)="onCartRateChange(i, 'purchaseRate', $event)"
                         [ngModelOptions]="{ standalone: true }"
-                        min="0"
-                        step="0.01"
+                        (keydown)="onDecimalKeydown($event)"
                       />
                     </td>
                     <td class="col-rate">
                       <input
-                        type="number"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
                         class="form-control form-control-sm"
                         [ngModel]="item.salesRate"
                         (ngModelChange)="onCartRateChange(i, 'salesRate', $event)"
                         [ngModelOptions]="{ standalone: true }"
-                        min="0"
-                        step="0.01"
+                        (keydown)="onDecimalKeydown($event)"
                       />
                     </td>
                     <td class="col-supplier">

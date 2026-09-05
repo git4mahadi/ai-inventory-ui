@@ -17,7 +17,12 @@ import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { generateBatchNo } from '../../../core/utils/batch-no.util';
 import { toApiDate } from '../../../core/utils/date.util';
-import { roundMoney, toNumber } from '../../../core/utils/sales-cart.util';
+import {
+  onDecimalKeydown,
+  roundMoney,
+  sanitizeDecimalInput,
+  toNumber,
+} from '../../../core/utils/sales-cart.util';
 import { OpeningStockDto } from '../../../models/dto/OpeningStockDto';
 import { OpeningStockItemDto } from '../../../models/dto/OpeningStockItemDto';
 import { LookupEnum } from '../../../models/enums/LookupEnum';
@@ -61,6 +66,7 @@ interface OpeningStockCartItem {
 export class OpeningStockCreateComponent implements OnInit, OnDestroy {
   @ViewChild('pickerItemSelect') pickerItemSelect?: NgSelectComponent;
   @ViewChild('pickerQuantityInput') pickerQuantityInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('pickerExpireInput') pickerExpireInput?: ElementRef<HTMLInputElement>;
 
   readonly openingStockForm: FormGroup;
   readonly pickerForm: FormGroup;
@@ -77,6 +83,7 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
     ...this.datePickerConfig,
     startView: 'year',
   };
+  readonly onDecimalKeydown = onDecimalKeydown;
 
   storeOptions: StoreResponse[] = [];
   financialYearOptions: FinancialYearResponse[] = [];
@@ -218,9 +225,27 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
     }
   }
 
-  onPickerQuantityEnter(event: Event): void {
+  onPickerAddEnter(event: Event): void {
     event.preventDefault();
     this.addPickerItem();
+  }
+
+  onPickerExpireDateChange(value: Date | null): void {
+    if (!value) {
+      return;
+    }
+    this.focusPickerExpireInput();
+  }
+
+  onPickerQuantityInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const sanitized = sanitizeDecimalInput(input.value);
+    if (sanitized !== input.value) {
+      input.value = sanitized;
+    }
+    this.pickerForm.get('quantity')?.setValue(sanitized === '' ? null : sanitized, {
+      emitEvent: false,
+    });
   }
 
   addPickerItem(): void {
@@ -273,7 +298,8 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
     if (!item) {
       return;
     }
-    item.stockQty = Math.max(0, toNumber(value));
+    const sanitized = sanitizeDecimalInput(String(value ?? ''));
+    item.stockQty = sanitized === '' || sanitized === '.' ? 0 : Math.max(0, toNumber(sanitized));
   }
 
   onCartRateChange(
@@ -285,7 +311,8 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
     if (!item) {
       return;
     }
-    item[field] = Math.max(0, toNumber(value));
+    const sanitized = sanitizeDecimalInput(String(value ?? ''));
+    item[field] = sanitized === '' || sanitized === '.' ? 0 : Math.max(0, toNumber(sanitized));
   }
 
   onCartExpireChange(index: number, value: Date | null): void {
@@ -422,6 +449,13 @@ export class OpeningStockCreateComponent implements OnInit, OnDestroy {
   private focusPickerQuantityInput(): void {
     setTimeout(() => {
       this.pickerQuantityInput?.nativeElement.focus();
+    });
+  }
+
+  private focusPickerExpireInput(): void {
+    setTimeout(() => {
+      this.pickerExpireInput?.nativeElement.focus();
+      this.pickerExpireInput?.nativeElement.select();
     });
   }
 

@@ -13,8 +13,8 @@
   }
 
   .col-batch {
-    min-width: 12rem;
-    width: 13.5rem;
+    min-width: 10rem;
+    width: 11.5rem;
 
     .form-control-sm[readonly] {
       background-color: #f7fbf8;
@@ -26,9 +26,13 @@
     width: 8.5rem;
   }
 
+  .col-qty {
+    width: 10.5rem;
+  }
+
   .col-supplier {
-    min-width: 10rem;
-    width: 16%;
+    min-width: 7rem;
+    width: 10%;
   }
 
   .form-ng-select {
