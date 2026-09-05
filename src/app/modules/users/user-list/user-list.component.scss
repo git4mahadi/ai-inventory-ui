@@ -1,0 +1,269 @@
+.user-crud {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  .page-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--green-ink);
+  }
+}
+
+.form-shell {
+  background: #fff;
+  border: 1px solid var(--panel-border);
+  border-left: 4px solid var(--green-500);
+  border-radius: 0.85rem;
+  box-shadow: 0 8px 22px rgba(18, 53, 40, 0.05);
+  overflow: hidden;
+
+  &.is-editing {
+    border-left-color: #c27d12;
+  }
+}
+
+.form-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid rgba(18, 53, 40, 0.07);
+  background: linear-gradient(180deg, #f7fbf8 0%, #fff 100%);
+}
+
+.create-form {
+  padding: 0.75rem 0.85rem 0.85rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem 0.65rem;
+}
+
+.field {
+  min-width: 0;
+
+  .form-label {
+    margin-bottom: 0.15rem;
+    font-size: 0.75rem;
+  }
+
+  .form-control-sm {
+    min-height: 1.85rem;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.8125rem;
+  }
+
+  .form-ng-select {
+    font-size: 0.8125rem;
+
+    ::ng-deep .ng-select-container {
+      min-height: 1.85rem;
+      height: 1.85rem;
+      border-color: rgba(31, 128, 84, 0.22);
+      border-radius: 0.25rem;
+    }
+
+    ::ng-deep .ng-dropdown-panel {
+      border-color: rgba(31, 128, 84, 0.22);
+      font-size: 0.8125rem;
+    }
+
+    ::ng-deep .ng-value,
+    ::ng-deep .ng-placeholder,
+    ::ng-deep .ng-option {
+      font-size: 0.8125rem;
+    }
+
+    &.ng-select.ng-select-focused ::ng-deep .ng-select-container {
+      border-color: var(--green-500);
+      box-shadow: 0 0 0 0.2rem rgba(42, 157, 106, 0.18);
+    }
+
+    &.is-multiple ::ng-deep .ng-select-container {
+      height: auto;
+      min-height: 1.85rem;
+    }
+  }
+
+  .invalid-feedback {
+    font-size: 0.72rem;
+    margin-top: 0.15rem;
+  }
+}
+
+.field-groups {
+  grid-column: 1 / -1;
+}
+
+.toolbar-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.toolbar-meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green-600);
+  white-space: nowrap;
+}
+
+.form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(31, 128, 84, 0.1);
+}
+
+.field-checks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+
+  .form-check {
+    margin: 0;
+    min-height: 1.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .form-check-label {
+    font-size: 0.8125rem;
+    color: var(--green-ink);
+  }
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+
+  .btn-sm {
+    padding: 0.2rem 0.65rem;
+    font-size: 0.78rem;
+  }
+}
+
+.list-shell {
+  background: #fff;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.85rem;
+  box-shadow: 0 8px 22px rgba(18, 53, 40, 0.05);
+  overflow: hidden;
+}
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid rgba(18, 53, 40, 0.07);
+  background: linear-gradient(180deg, #f7fbf8 0%, #fff 100%);
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr 1fr 0.95fr 0.85fr auto auto;
+  gap: 0.4rem;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid rgba(18, 53, 40, 0.07);
+  background: rgba(241, 248, 244, 0.35);
+
+  .form-control-sm {
+    min-height: 1.85rem;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.78rem;
+  }
+
+  .filter-ng-select {
+    font-size: 0.78rem;
+
+    ::ng-deep .ng-select-container {
+      min-height: 1.85rem;
+      height: 1.85rem;
+      border-color: rgba(31, 128, 84, 0.22);
+      border-radius: 0.25rem;
+    }
+
+    ::ng-deep .ng-dropdown-panel {
+      border-color: rgba(31, 128, 84, 0.22);
+      font-size: 0.78rem;
+    }
+
+    ::ng-deep .ng-value,
+    ::ng-deep .ng-placeholder,
+    ::ng-deep .ng-option {
+      font-size: 0.78rem;
+    }
+  }
+
+  .btn-sm {
+    padding: 0.2rem 0.55rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+}
+
+.table-wrap {
+  --table-row-h: 2.55rem;
+  --table-head-h: 2.55rem;
+  --table-page-size: 10;
+}
+
+.state-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--table-head-h) + (var(--table-row-h) * var(--table-page-size)));
+  padding: 2rem 1rem;
+  font-size: 0.82rem;
+  color: #6c757d;
+}
+
+@media (max-width: 991.98px) {
+  .form-grid,
+  .filter-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .field-groups {
+    grid-column: 1 / -1;
+  }
+
+  .filter-bar .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .form-grid,
+  .filter-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .form-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions {
+    margin-left: 0;
+
+    .btn {
+      flex: 1;
+    }
+  }
+}

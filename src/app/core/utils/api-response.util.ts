@@ -15,6 +15,7 @@ import { SalesResponse } from '../../models/response/SalesResponse';
 import { SummaryResponseV1 } from '../../models/response/SummaryResponseV1';
 import { SupplierResponse } from '../../models/response/SupplierResponse';
 import { UserGroupResponse } from '../../models/response/UserGroupResponse';
+import { UserResponse } from '../../models/response/UserResponse';
 
 /** Unwraps `{ data: T }` API envelopes; passes through if already unwrapped. */
 export function unwrapApiData<T>() {
@@ -463,6 +464,54 @@ function normalizePermissionList(raw: unknown): string[] {
       return '';
     })
     .filter((role) => !!role);
+}
+
+/** Resolves a user entity from a raw or `{ data: user }` payload. */
+export function normalizeUser(payload: unknown): UserResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'username' in value ||
+    'fullName' in value ||
+    'authority' in value ||
+    'isAccountEnabled' in value
+  ) {
+    const groupsRaw = value['groups'];
+    const groups = Array.isArray(groupsRaw)
+      ? groupsRaw
+          .map((group) => normalizeUserGroup(group))
+          .filter((group): group is UserGroupResponse => !!group)
+      : undefined;
+
+    return {
+      ...(value as UserResponse),
+      authority: normalizeAuthority(value['authority']),
+      groups,
+    };
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeUser(value['data']);
+  }
+
+  return null;
+}
+
+function normalizeAuthority(raw: unknown): string | undefined {
+  if (typeof raw === 'string' && raw.trim()) {
+    return raw;
+  }
+  if (raw && typeof raw === 'object') {
+    const record = raw as Record<string, unknown>;
+    if (typeof record['name'] === 'string') {
+      return record['name'];
+    }
+  }
+  return undefined;
 }
 
 /** Resolves a lookup entity from a raw or `{ data: lookup }` payload. */

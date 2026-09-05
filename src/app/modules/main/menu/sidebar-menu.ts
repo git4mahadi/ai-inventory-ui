@@ -246,6 +246,12 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         shortLabel: 'UG',
         link: '/user-groups',
       },
+      {
+        id: 'security-user',
+        label: 'User',
+        shortLabel: 'US',
+        link: '/users',
+      },
     ],
   },
 ];

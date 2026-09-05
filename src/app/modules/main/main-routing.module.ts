@@ -95,6 +95,11 @@ const routes: Routes = [
         loadChildren: () =>
           import('../user-groups/user-groups.module').then((m) => m.UserGroupsModule),
       },
+      {
+        path: 'users',
+        loadChildren: () =>
+          import('../users/users.module').then((m) => m.UsersModule),
+      },
     ],
   },
 ];
