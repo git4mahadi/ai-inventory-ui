@@ -132,6 +132,17 @@ export function receivablePurchaseOrderItems(
   return (poItems ?? []).filter((item) => hasRemainingReceivableQty(item.itemId, maxByItemId));
 }
 
+export function isPurchaseOrderFullyReceived(
+  poItems: PurchaseOrderItemResponse[] | null | undefined,
+  maxByItemId: Map<string, number>,
+): boolean {
+  const hasPoItems = (poItems ?? []).some((item) => !!resolveItemId(item.itemId));
+  if (!hasPoItems) {
+    return false;
+  }
+  return receivablePurchaseOrderItems(poItems, maxByItemId).length === 0;
+}
+
 export function remainingQtyAfterCurrentReceive(
   maxQty: number | null | undefined,
   currentQty: number,

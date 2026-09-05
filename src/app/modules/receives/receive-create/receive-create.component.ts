@@ -19,6 +19,7 @@ import { toApiDate } from '../../../core/utils/date.util';
 import {
   alreadyReceivedQtyByItemId,
   hasRemainingReceivableQty,
+  isPurchaseOrderFullyReceived,
   maxReceivableByItemId,
   receivedQtyExceedsMax,
   receivablePurchaseOrderItems,
@@ -84,6 +85,7 @@ export class ReceiveCreateComponent implements OnInit, OnDestroy {
 
   submitted = false;
   loading = false;
+  purchaseOrderFullyReceived = false;
 
   private readonly destroy$ = new Subject<void>();
   private applyingPurchaseOrder = false;
@@ -190,11 +192,14 @@ export class ReceiveCreateComponent implements OnInit, OnDestroy {
   }
 
   addItemRow(): void {
+    if (this.purchaseOrderFullyReceived) {
+      return;
+    }
     this.itemRows.push(this.createItemGroup());
   }
 
   removeItemRow(index: number): void {
-    if (this.itemRows.length <= 1) {
+    if (this.purchaseOrderFullyReceived || this.itemRows.length <= 1) {
       return;
     }
     this.itemRows.removeAt(index);
@@ -209,6 +214,7 @@ export class ReceiveCreateComponent implements OnInit, OnDestroy {
       this.purchaseOrderItems = [];
       this.maxReceivableByItemId = new Map();
       this.alreadyReceivedByItemId = new Map();
+      this.purchaseOrderFullyReceived = false;
       this.receiveForm.patchValue({ storeId: null, supplierId: null });
       this.replaceItemRows([]);
       return;
@@ -284,6 +290,10 @@ export class ReceiveCreateComponent implements OnInit, OnDestroy {
 
   onSubmit(): void {
     this.submitted = true;
+    if (this.purchaseOrderFullyReceived) {
+      this.toastr.info('All purchase order items are already fully received');
+      return;
+    }
     this.receiveForm.markAllAsTouched();
     this.syncReceivedQtyMaxValidators();
     if (this.receivedQtyExceedsPurchaseOrder()) {
@@ -333,6 +343,7 @@ export class ReceiveCreateComponent implements OnInit, OnDestroy {
     this.purchaseOrderItems = [];
     this.maxReceivableByItemId = new Map();
     this.alreadyReceivedByItemId = new Map();
+    this.purchaseOrderFullyReceived = false;
     this.submitted = false;
   }
 
@@ -433,9 +444,19 @@ export class ReceiveCreateComponent implements OnInit, OnDestroy {
     this.ensureSelectedStore(order.storeId);
     this.ensureSelectedSupplier(order.supplierId);
 
-    const poItems = receivablePurchaseOrderItems(order.items, this.maxReceivableByItemId);
-    this.replaceItemRows(poItems);
-    if ((order.items?.some((item) => !!item.itemId) ?? false) && poItems.length === 0) {
+    const receivableItems = receivablePurchaseOrderItems(
+      order.items,
+      this.maxReceivableByItemId,
+    );
+    this.purchaseOrderFullyReceived = isPurchaseOrderFullyReceived(
+      order.items,
+      this.maxReceivableByItemId,
+    );
+    const itemsToShow = this.purchaseOrderFullyReceived
+      ? (order.items ?? []).filter((item) => !!resolveItemId(item.itemId))
+      : receivableItems;
+    this.replaceItemRows(itemsToShow);
+    if (this.purchaseOrderFullyReceived) {
       this.toastr.info('All purchase order items are already fully received');
     }
   }
@@ -445,6 +466,7 @@ export class ReceiveCreateComponent implements OnInit, OnDestroy {
     this.itemOptions = [];
     if (!items.length) {
       this.itemRows.push(this.createItemGroup());
+      this.syncFullyReceivedRowState();
       return;
     }
 
@@ -456,17 +478,21 @@ export class ReceiveCreateComponent implements OnInit, OnDestroy {
         ]);
       }
     }
+    this.syncFullyReceivedRowState();
   }
 
   private createItemGroup(item?: PurchaseOrderItemResponse): FormGroup {
     const itemId = resolveItemId(item?.itemId);
     const remainingQty = this.maxReceivedQtyFor(itemId);
-    const defaultQty = remainingQty != null ? remainingQty : toQty(item?.orderedQty) || null;
+    const defaultQty =
+      remainingQty != null
+        ? remainingQty
+        : toQty(item?.orderedQty) || null;
     return this.formBuilder.group({
       itemId: [itemId, Validators.required],
       itemName: [item?.itemName ?? ''],
       receivedQty: [
-        defaultQty && defaultQty > 0 ? defaultQty : null,
+        defaultQty != null ? defaultQty : null,
         this.receivedQtyValidators(itemId),
       ],
       rejectedQty: [null, [Validators.min(0)]],
@@ -479,6 +505,20 @@ export class ReceiveCreateComponent implements OnInit, OnDestroy {
       expireDate: [null as Date | null],
       remarks: ['', [Validators.maxLength(255)]],
     });
+  }
+
+  private syncFullyReceivedRowState(): void {
+    for (const row of this.itemRows.controls) {
+      const receivedQty = row.get('receivedQty');
+      if (!receivedQty) {
+        continue;
+      }
+      if (this.purchaseOrderFullyReceived) {
+        receivedQty.disable({ emitEvent: false });
+      } else {
+        receivedQty.enable({ emitEvent: false });
+      }
+    }
   }
 
   private nextBatchNo(): string {

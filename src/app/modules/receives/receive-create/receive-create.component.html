@@ -113,6 +113,7 @@
             class="icon-action icon-add-line"
             title="Add line"
             aria-label="Add line"
+            [disabled]="purchaseOrderFullyReceived"
             (click)="addItemRow()"
           >
             <span class="icon-graphic" aria-hidden="true"></span>
@@ -253,7 +254,7 @@
                       class="icon-action icon-delete"
                       title="Remove line"
                       aria-label="Remove line"
-                      [disabled]="itemRows.length <= 1"
+                      [disabled]="purchaseOrderFullyReceived || itemRows.length <= 1"
                       (click)="removeItemRow($index)"
                     >
                       <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
@@ -285,7 +286,7 @@
         <button type="button" class="btn btn-outline-green btn-sm" (click)="onClear()">
           Clear
         </button>
-        <button type="submit" class="btn btn-green btn-sm" [disabled]="loading">
+        <button type="submit" class="btn btn-green btn-sm" [disabled]="loading || purchaseOrderFullyReceived">
           {{ loading ? 'Saving...' : 'Save' }}
         </button>
       </div>

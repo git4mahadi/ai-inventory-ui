@@ -20,6 +20,7 @@ import {
   alreadyReceivedQtyByItemId,
   creditReceivedByItemId,
   hasRemainingReceivableQty,
+  isPurchaseOrderFullyReceived,
   maxReceivableByItemId,
   receivedQtyExceedsMax,
   receivablePurchaseOrderItems,
@@ -91,6 +92,7 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
   submitted = false;
   loading = false;
   loadingRecord = true;
+  purchaseOrderFullyReceived = false;
   receiveId = '';
   receiveNcId = '';
   statusLabel = '';
@@ -214,14 +216,14 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
   }
 
   addItemRow(): void {
-    if (!this.canEdit) {
+    if (!this.canEdit || this.purchaseOrderFullyReceived) {
       return;
     }
     this.itemRows.push(this.createItemGroup());
   }
 
   removeItemRow(index: number): void {
-    if (!this.canEdit || this.itemRows.length <= 1) {
+    if (!this.canEdit || this.purchaseOrderFullyReceived || this.itemRows.length <= 1) {
       return;
     }
     this.itemRows.removeAt(index);
@@ -239,6 +241,7 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
       this.purchaseOrderItems = [];
       this.maxReceivableByItemId = new Map();
       this.alreadyReceivedByItemId = new Map();
+      this.purchaseOrderFullyReceived = false;
       this.receiveForm.patchValue({ storeId: null, supplierId: null });
       this.replaceItemRows([]);
       return;
@@ -317,6 +320,10 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
       this.toastr.error('Only draft receives can be updated');
       return;
     }
+    if (this.purchaseOrderFullyReceived) {
+      this.toastr.info('All purchase order items are already fully received');
+      return;
+    }
     this.receiveForm.markAllAsTouched();
     this.syncReceivedQtyMaxValidators();
     if (this.receivedQtyExceedsPurchaseOrder()) {
@@ -377,6 +384,7 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     this.loadedRecord = record;
     this.receiveNcId = record.receiveNcId || '';
     this.statusLabel = itemReceiveStatusLabel(record.receiveStatus);
+    this.purchaseOrderFullyReceived = false;
 
     this.receiveForm.patchValue(
       {
@@ -527,9 +535,19 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     });
     this.ensureSelectedStore(order.storeId);
     this.ensureSelectedSupplier(order.supplierId);
-    const poItems = receivablePurchaseOrderItems(order.items, this.maxReceivableByItemId);
-    this.replaceItemRows(poItems);
-    if ((order.items?.some((item) => !!item.itemId) ?? false) && poItems.length === 0) {
+    const receivableItems = receivablePurchaseOrderItems(
+      order.items,
+      this.maxReceivableByItemId,
+    );
+    this.purchaseOrderFullyReceived = isPurchaseOrderFullyReceived(
+      order.items,
+      this.maxReceivableByItemId,
+    );
+    const itemsToShow = this.purchaseOrderFullyReceived
+      ? (order.items ?? []).filter((item) => !!resolveItemId(item.itemId))
+      : receivableItems;
+    this.replaceItemRows(itemsToShow);
+    if (this.purchaseOrderFullyReceived) {
       this.toastr.info('All purchase order items are already fully received');
     }
   }
@@ -539,6 +557,7 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     this.itemOptions = [];
     if (!items.length) {
       this.itemRows.push(this.createItemGroup());
+      this.syncFullyReceivedRowState();
       return;
     }
 
@@ -557,6 +576,7 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
         ]);
       }
     }
+    this.syncFullyReceivedRowState();
   }
 
   private nextBatchNo(): string {
@@ -849,11 +869,26 @@ export class ReceiveEditComponent implements OnInit, OnDestroy {
     this.itemRows.updateValueAndValidity({ emitEvent: false });
   }
 
+  private syncFullyReceivedRowState(): void {
+    for (const row of this.itemRows.controls) {
+      const receivedQty = row.get('receivedQty');
+      if (!receivedQty) {
+        continue;
+      }
+      if (this.purchaseOrderFullyReceived || !this.canEdit) {
+        receivedQty.disable({ emitEvent: false });
+      } else {
+        receivedQty.enable({ emitEvent: false });
+      }
+    }
+  }
+
   private syncFormEnabledState(): void {
     if (this.canEdit) {
       this.receiveForm.enable({ emitEvent: false });
       this.receiveForm.get('storeId')?.disable({ emitEvent: false });
       this.receiveForm.get('supplierId')?.disable({ emitEvent: false });
+      this.syncFullyReceivedRowState();
       return;
     }
     this.receiveForm.disable({ emitEvent: false });

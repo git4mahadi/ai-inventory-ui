@@ -130,7 +130,7 @@
               class="icon-action icon-add-line"
               title="Add line"
               aria-label="Add line"
-              [disabled]="!canEdit"
+              [disabled]="!canEdit || purchaseOrderFullyReceived"
               (click)="addItemRow()"
             >
               <span class="icon-graphic" aria-hidden="true"></span>
@@ -271,7 +271,7 @@
                         class="icon-action icon-delete"
                         title="Remove line"
                         aria-label="Remove line"
-                        [disabled]="!canEdit || itemRows.length <= 1"
+                        [disabled]="!canEdit || purchaseOrderFullyReceived || itemRows.length <= 1"
                         (click)="removeItemRow($index)"
                       >
                         <img src="/assets/svg/icon-delete.svg" alt="" width="14" height="14" aria-hidden="true" />
@@ -303,7 +303,7 @@
           <button type="button" class="btn btn-outline-green btn-sm" (click)="onClear()" [disabled]="!canEdit">
             Reset
           </button>
-          <button type="submit" class="btn btn-green btn-sm" [disabled]="loading || !canEdit">
+          <button type="submit" class="btn btn-green btn-sm" [disabled]="loading || !canEdit || purchaseOrderFullyReceived">
             {{ loading ? 'Saving...' : 'Update' }}
           </button>
         </div>
