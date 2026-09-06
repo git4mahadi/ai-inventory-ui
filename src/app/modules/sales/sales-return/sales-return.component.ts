@@ -13,7 +13,7 @@ import {
   switchMap,
 } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { roundMoney, toNumber } from '../../../core/utils/sales-cart.util';
+import { roundMoney, toNumber, onDecimalKeydown, sanitizeDecimalInput } from '../../../core/utils/sales-cart.util';
 import { toApiDate, toDatePickerValue, toDisplayDate } from '../../../core/utils/date.util';
 import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
 import { ReturnDto } from '../../../models/dto/ReturnDto';
@@ -34,12 +34,15 @@ interface ReturnLine {
   itemName: string;
   itemCode?: string;
   invoiceQty: number;
+  alreadyReturnedQty: number;
+  availableQty: number;
   unitPrice: number;
   discountAmount: number;
   vatAmount: number;
   taxAmount: number;
   lineTotal: number;
   returnQty: number;
+  qtyInput: string;
 }
 
 @Component({
@@ -51,6 +54,7 @@ interface ReturnLine {
 export class SalesReturnComponent implements OnInit {
   readonly returnForm: FormGroup;
   readonly invoiceTypeahead$ = new Subject<string>();
+  readonly onDecimalKeydown = onDecimalKeydown;
   readonly datePickerConfig: Partial<BsDatepickerConfig> = {
     dateInputFormat: 'DD-MMM-YY',
     containerClass: 'theme-green',
@@ -143,7 +147,7 @@ export class SalesReturnComponent implements OnInit {
 
   get confirmDetail(): string {
     const invoiceNo = this.invoice?.invoiceNcId || 'this invoice';
-    return `Discount, VAT, and tax will be adjusted on ${invoiceNo}. Return qty cannot exceed invoice qty.`;
+    return `Discount, VAT, and tax will be adjusted on ${invoiceNo}. Return qty must be greater than zero and cannot exceed remaining qty.`;
   }
 
   invoiceLabel(invoice: InvoiceResponse): string {
@@ -158,6 +162,10 @@ export class SalesReturnComponent implements OnInit {
 
   displayDate(value?: string | null): string {
     return toDisplayDate(value) || '—';
+  }
+
+  remainingQty(line: ReturnLine): number {
+    return roundMoney(Math.max(0, line.availableQty - toNumber(line.returnQty)));
   }
 
   onInvoiceChange(selected: string | InvoiceResponse | null): void {
@@ -178,8 +186,27 @@ export class SalesReturnComponent implements OnInit {
     if (!line) {
       return;
     }
-    const qty = Math.max(0, toNumber(value));
-    line.returnQty = roundMoney(Math.min(qty, line.invoiceQty));
+    const sanitized = sanitizeDecimalInput(String(value ?? ''));
+    if (sanitized === '' || sanitized === '.') {
+      line.qtyInput = sanitized;
+      line.returnQty = 0;
+      return;
+    }
+
+    const qty = toNumber(sanitized);
+    if (qty <= 0 && !sanitized.endsWith('.')) {
+      line.qtyInput = '';
+      line.returnQty = 0;
+      return;
+    }
+
+    const capped = Math.min(qty, line.availableQty);
+    line.returnQty = capped <= 0 ? 0 : capped;
+    if (capped !== qty && qty > 0) {
+      line.qtyInput = String(capped);
+      return;
+    }
+    line.qtyInput = sanitized;
   }
 
   onSubmit(): void {
@@ -196,9 +223,11 @@ export class SalesReturnComponent implements OnInit {
       this.toastr.warning('Enter a return quantity for at least one item.');
       return;
     }
-    const invalid = this.lines.find((line) => line.returnQty > line.invoiceQty);
+    const invalid = this.lines.find(
+      (line) => line.returnQty > 0 && line.returnQty > line.availableQty,
+    );
     if (invalid) {
-      this.toastr.warning('Return quantity cannot exceed invoice quantity.');
+      this.toastr.warning('Return quantity cannot exceed remaining quantity.');
       return;
     }
     this.confirmOpen = true;
@@ -381,8 +410,11 @@ export class SalesReturnComponent implements OnInit {
         continue;
       }
       const qty = toNumber(previous.quantity);
-      line.invoiceQty = roundMoney(line.invoiceQty + qty);
+      line.availableQty = roundMoney(line.availableQty + qty);
+      line.invoiceQty = line.availableQty;
+      line.alreadyReturnedQty = qty;
       line.returnQty = qty;
+      line.qtyInput = String(qty);
       previousQty.delete(line.invoiceItemId);
     }
 
@@ -396,12 +428,15 @@ export class SalesReturnComponent implements OnInit {
         itemId: leftover.itemId,
         itemName: leftover.itemName || 'Item',
         invoiceQty: qty,
+        alreadyReturnedQty: qty,
+        availableQty: qty,
         unitPrice: toNumber(leftover.unitPrice),
         discountAmount: toNumber(leftover.discountAmount),
         vatAmount: toNumber(leftover.vatAmount),
         taxAmount: toNumber(leftover.taxAmount),
         lineTotal: toNumber(leftover.lineTotal),
         returnQty: qty,
+        qtyInput: String(qty),
       });
     }
   }
@@ -422,27 +457,31 @@ export class SalesReturnComponent implements OnInit {
   }
 
   private toLine(item: InvoiceItemResponse): ReturnLine {
+    const remaining = toNumber(item.quantity);
     return {
       invoiceItemId: item.id as string,
       itemId: item.itemId as string,
       itemName: item.itemName || 'Item',
       itemCode: item.itemCode,
-      invoiceQty: toNumber(item.quantity),
+      invoiceQty: remaining,
+      alreadyReturnedQty: 0,
+      availableQty: remaining,
       unitPrice: toNumber(item.unitPrice),
       discountAmount: toNumber(item.discountAmount),
       vatAmount: toNumber(item.vatAmount),
       taxAmount: toNumber(item.taxAmount),
       lineTotal: toNumber(item.lineTotal),
       returnQty: 0,
+      qtyInput: '',
     };
   }
 
   private lineReturn(line: ReturnLine) {
-    const returnQty = Math.min(toNumber(line.returnQty), line.invoiceQty);
+    const returnQty = Math.min(toNumber(line.returnQty), line.availableQty);
     const gross = roundMoney(line.unitPrice * returnQty);
-    const discount = this.proportion(line.discountAmount, returnQty, line.invoiceQty);
-    const vat = this.proportion(line.vatAmount, returnQty, line.invoiceQty);
-    const tax = this.proportion(line.taxAmount, returnQty, line.invoiceQty);
+    const discount = this.proportion(line.discountAmount, returnQty, line.availableQty);
+    const vat = this.proportion(line.vatAmount, returnQty, line.availableQty);
+    const tax = this.proportion(line.taxAmount, returnQty, line.availableQty);
     return {
       gross,
       discount,

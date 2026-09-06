@@ -119,6 +119,8 @@
                 <tr>
                   <th class="col-item">Item</th>
                   <th class="col-qty">Invoice qty</th>
+                  <th class="col-qty">Returned</th>
+                  <th class="col-qty">Remaining</th>
                   <th class="col-rate">Rate</th>
                   <th class="col-discount">Discount</th>
                   <th class="col-vat">VAT</th>
@@ -129,7 +131,7 @@
               </thead>
               <tbody>
                 @for (line of lines; track line.invoiceItemId; let i = $index) {
-                  <tr [class.line-fully-returned]="line.invoiceQty <= 0">
+                  <tr [class.line-fully-returned]="line.availableQty <= 0">
                     <td class="col-item">
                       <div class="cart-item-name">{{ line.itemName }}</div>
                       @if (line.itemCode) {
@@ -137,6 +139,8 @@
                       }
                     </td>
                     <td class="col-qty">{{ line.invoiceQty | bdNumber }}</td>
+                    <td class="col-qty">{{ line.alreadyReturnedQty | bdNumber }}</td>
+                    <td class="col-qty">{{ remainingQty(line) | bdNumber }}</td>
                     <td class="col-rate">{{ line.unitPrice | bdNumber }}</td>
                     <td class="col-discount">{{ line.discountAmount | bdNumber }}</td>
                     <td class="col-vat">{{ line.vatAmount | bdNumber }}</td>
@@ -146,15 +150,15 @@
                     </td>
                     <td class="col-qty">
                       <input
-                        type="number"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
                         class="form-control form-control-sm"
-                        [ngModel]="line.returnQty"
+                        [ngModel]="line.qtyInput"
                         (ngModelChange)="onReturnQtyChange(i, $event)"
                         [ngModelOptions]="{ standalone: true }"
-                        min="0"
-                        step="0.01"
-                        [max]="line.invoiceQty"
-                        [disabled]="line.invoiceQty <= 0"
+                        (keydown)="onDecimalKeydown($event)"
+                        [disabled]="line.availableQty <= 0"
                         [attr.aria-label]="'Return quantity for ' + line.itemName"
                       />
                     </td>
