@@ -11,6 +11,7 @@ import { OpeningStockResponse } from '../../models/response/OpeningStockResponse
 import { PurchaseOrderResponse } from '../../models/response/PurchaseOrderResponse';
 import { ReceiveResponse } from '../../models/response/ReceiveResponse';
 import { ReconcileStockResponse } from '../../models/response/ReconcileStockResponse';
+import { ReturnResponse } from '../../models/response/ReturnResponse';
 import { InvoiceCountPointResponse } from '../../models/response/InvoiceCountPointResponse';
 import { SalesResponse } from '../../models/response/SalesResponse';
 import { SalesTrendPointResponse } from '../../models/response/SalesTrendPointResponse';
@@ -355,6 +356,31 @@ export function normalizeReconcileStock(
 
   if ('data' in value && value['data'] != null) {
     return normalizeReconcileStock(value['data']);
+  }
+
+  return null;
+}
+
+/** Resolves a return entity from a raw or `{ data: return }` payload. */
+export function normalizeReturn(payload: unknown): ReturnResponse | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  if (
+    'returnNcId' in value ||
+    'returnDate' in value ||
+    'returnType' in value ||
+    'refundAmount' in value ||
+    'returnItems' in value
+  ) {
+    return value as ReturnResponse;
+  }
+
+  if ('data' in value && value['data'] != null) {
+    return normalizeReturn(value['data']);
   }
 
   return null;

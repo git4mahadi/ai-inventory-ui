@@ -104,7 +104,7 @@ export const PERMISSION_TREE: PermissionNode[] = [
     leaf('ROLE_INCOME_STATEMENT_REPORT', 'Income statement'),
   ]),
   node('return', 'Return', 'RT', [
-    leaf('ROLE_RETURN_CREATE_SALES', 'Create sales'),
+    leaf('ROLE_RETURN_CREATE', 'Create'),
     leaf('ROLE_RETURN_UPDATE', 'Update'),
     leaf('ROLE_RETURN_DELETE', 'Delete'),
     leaf('ROLE_RETURN_READ', 'Read'),

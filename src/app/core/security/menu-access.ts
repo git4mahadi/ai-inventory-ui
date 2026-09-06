@@ -51,8 +51,11 @@ export const MenuRoles = {
     'ROLE_INVOICE_SEARCH_TERM',
   ],
   dueCollection: ['ROLE_INVOICE_DUE_COLLECTION'],
+  salesReturnCreate: roles('ROLE_RETURN', CREATE),
+  salesReturnList: roles('ROLE_RETURN', SEARCH),
+  salesReturnEdit: roles('ROLE_RETURN', UPDATE),
   salesReturn: [
-    'ROLE_RETURN_CREATE_SALES',
+    'ROLE_RETURN_CREATE',
     'ROLE_RETURN_UPDATE',
     'ROLE_RETURN_DELETE',
     'ROLE_RETURN_READ',

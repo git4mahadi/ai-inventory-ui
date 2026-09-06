@@ -2,11 +2,29 @@
   <div class="form-shell">
     <div class="form-toolbar">
       <div class="toolbar-title">
-        <h1 class="page-title">Sales Return</h1>
-        <span class="toolbar-meta">Return against invoice qty</span>
+        <h1 class="page-title">{{ isEdit ? 'Sales Return Edit' : 'Sales Return' }}</h1>
+        <span class="toolbar-meta">{{
+          isEdit ? returnNcId || 'Update record' : 'Return against invoice qty'
+        }}</span>
       </div>
+      @if (isEdit) {
+        <a
+          routerLink="/sales/sales-return/list"
+          class="icon-action icon-back"
+          title="Back to list"
+          aria-label="Back to sales return list"
+        >
+          <span class="icon-graphic" aria-hidden="true"></span>
+        </a>
+      }
     </div>
 
+    @if (loadingRecord) {
+      <div class="state-block">
+        <div class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></div>
+        <span>Loading sales return...</span>
+      </div>
+    } @else {
     <form class="create-form" [formGroup]="returnForm" (ngSubmit)="onSubmit()" novalidate>
       <div class="form-grid">
         <div class="field field-invoice">
@@ -23,6 +41,7 @@
             [typeahead]="invoiceTypeahead$"
             [minTermLength]="3"
             [loading]="loadingInvoices"
+            [disabled]="isEdit"
             notFoundText="Type at least 3 characters"
             (change)="onInvoiceChange($event)"
             [class.is-invalid]="submitted && f['invoiceId'].invalid"
@@ -174,32 +193,40 @@
 
       <div class="form-actions">
         <div class="form-actions-inner">
-          <button type="button" class="btn-action btn-action-clear" (click)="onClear()" [disabled]="submitting">
+          <button
+            type="button"
+            class="btn-action btn-action-clear"
+            (click)="onClear()"
+            [disabled]="submitting"
+          >
             <span class="btn-action-icon btn-action-icon-clear" aria-hidden="true"></span>
-            <span class="btn-action-label">Clear</span>
+            <span class="btn-action-label">{{ isEdit ? 'Cancel' : 'Clear' }}</span>
           </button>
-          @if (canCreate) {
+          @if (canSave) {
             <button
               type="submit"
               class="btn-action btn-action-return"
               [disabled]="submitting || loadingInvoice || selectedReturnQty <= 0"
             >
               <span class="btn-action-icon btn-action-icon-return" aria-hidden="true"></span>
-              <span class="btn-action-label">{{ submitting ? 'Saving…' : 'Return' }}</span>
+              <span class="btn-action-label">{{
+                submitting ? (isEdit ? 'Updating…' : 'Saving…') : isEdit ? 'Update' : 'Return'
+              }}</span>
             </button>
           }
         </div>
       </div>
     </form>
+    }
   </div>
 
   <app-confirm-dialog
     [open]="confirmOpen"
     [danger]="false"
-    title="Save sales return"
+    [title]="isEdit ? 'Update sales return' : 'Save sales return'"
     [message]="confirmMessage"
     [detail]="confirmDetail"
-    confirmLabel="Return"
+    [confirmLabel]="isEdit ? 'Update' : 'Return'"
     cancelLabel="Cancel"
     [busy]="submitting"
     (confirmed)="confirmReturn()"

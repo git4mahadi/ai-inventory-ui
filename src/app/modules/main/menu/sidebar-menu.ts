@@ -137,7 +137,15 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         label: 'Sales Return',
         shortLabel: 'RT',
         link: '/sales/sales-return',
-        roles: MenuRoles.salesReturn,
+        exact: true,
+        roles: MenuRoles.salesReturnCreate,
+      },
+      {
+        id: 'sales-return-list',
+        label: 'Sales Return List',
+        shortLabel: 'LR',
+        link: '/sales/sales-return/list',
+        roles: MenuRoles.salesReturnList,
       },
       {
         id: 'sales-stock',

@@ -7,6 +7,7 @@ export class ReturnDto {
   @prop() storeId?: string;
   @prop() customerId?: string;
   @prop() invoiceId?: string;
+  @prop() restockingFee?: number;
   @prop() returnItems?: ReturnItemDto[];
 
   public constructor(init?: Partial<ReturnDto>) {

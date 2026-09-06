@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import { ToastrService } from 'ngx-toastr';
 import {
@@ -13,13 +14,15 @@ import {
 } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { roundMoney, toNumber } from '../../../core/utils/sales-cart.util';
-import { toApiDate, toDisplayDate } from '../../../core/utils/date.util';
+import { toApiDate, toDatePickerValue, toDisplayDate } from '../../../core/utils/date.util';
 import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
 import { ReturnDto } from '../../../models/dto/ReturnDto';
 import { ReturnItemDto } from '../../../models/dto/ReturnItemDto';
 import { invoiceStatusLabel } from '../../../models/enums/InvoiceStatus';
 import { InvoiceItemResponse } from '../../../models/response/InvoiceItemResponse';
 import { InvoiceResponse } from '../../../models/response/InvoiceResponse';
+import { ReturnItemResponse } from '../../../models/response/ReturnItemResponse';
+import { ReturnResponse } from '../../../models/response/ReturnResponse';
 import { InvoiceSearchDto } from '../../../models/search/InvoiceSearchDto';
 import { AuthService } from '../../../core/services/auth.service';
 import { InvoiceApiService } from '../../../services/InvoiceApiService';
@@ -45,7 +48,7 @@ interface ReturnLine {
   templateUrl: './sales-return.component.html',
   styleUrl: './sales-return.component.scss',
 })
-export class SalesReturnComponent {
+export class SalesReturnComponent implements OnInit {
   readonly returnForm: FormGroup;
   readonly invoiceTypeahead$ = new Subject<string>();
   readonly datePickerConfig: Partial<BsDatepickerConfig> = {
@@ -62,10 +65,16 @@ export class SalesReturnComponent {
 
   loadingInvoices = false;
   loadingInvoice = false;
+  loadingRecord = false;
   submitting = false;
   submitted = false;
   confirmOpen = false;
   canCreate = false;
+  canUpdate = false;
+  isEdit = false;
+  returnId = '';
+  returnNcId = '';
+  restockingFee = 0;
 
   constructor(
     private readonly formBuilder: FormBuilder,
@@ -73,8 +82,11 @@ export class SalesReturnComponent {
     private readonly returnApi: ReturnApiService,
     private readonly toastr: ToastrService,
     private readonly authService: AuthService,
+    private readonly route: ActivatedRoute,
+    private readonly router: Router,
   ) {
-    this.canCreate = this.authService.can('ROLE_RETURN_CREATE_SALES');
+    this.canCreate = this.authService.can('ROLE_RETURN_CREATE');
+    this.canUpdate = this.authService.can('ROLE_RETURN_UPDATE');
     this.returnForm = this.formBuilder.group({
       invoiceId: [null as string | null, Validators.required],
       returnDate: [new Date(), Validators.required],
@@ -82,8 +94,27 @@ export class SalesReturnComponent {
     this.setupInvoiceTypeahead();
   }
 
+  ngOnInit(): void {
+    this.returnId = this.route.snapshot.paramMap.get('id') || '';
+    this.isEdit = !!this.returnId;
+    if (!this.isEdit) {
+      return;
+    }
+    if (!this.canUpdate) {
+      this.toastr.error('You do not have permission to edit sales returns');
+      void this.router.navigate(['/sales/sales-return/list']);
+      return;
+    }
+    this.returnForm.get('invoiceId')?.disable({ emitEvent: false });
+    this.loadReturn();
+  }
+
   get f() {
     return this.returnForm.controls;
+  }
+
+  get canSave(): boolean {
+    return this.isEdit ? this.canUpdate : this.canCreate;
   }
 
   get selectedReturnQty(): number {
@@ -106,7 +137,8 @@ export class SalesReturnComponent {
   }
 
   get confirmMessage(): string {
-    return `Return ${formatToBdNumberingSystem(this.selectedReturnQty, 2)} item qty and refund ${formatToBdNumberingSystem(this.returnTotals.refundAmount, 2)}?`;
+    const action = this.isEdit ? 'Update' : 'Return';
+    return `${action} ${formatToBdNumberingSystem(this.selectedReturnQty, 2)} item qty and refund ${formatToBdNumberingSystem(this.returnTotals.refundAmount, 2)}?`;
   }
 
   get confirmDetail(): string {
@@ -129,6 +161,9 @@ export class SalesReturnComponent {
   }
 
   onInvoiceChange(selected: string | InvoiceResponse | null): void {
+    if (this.isEdit) {
+      return;
+    }
     const invoiceId = typeof selected === 'string' ? selected : selected?.id ?? null;
     this.returnForm.patchValue({ invoiceId });
     if (!invoiceId) {
@@ -148,7 +183,7 @@ export class SalesReturnComponent {
   }
 
   onSubmit(): void {
-    if (!this.canCreate) {
+    if (!this.canSave) {
       return;
     }
     this.submitted = true;
@@ -170,11 +205,11 @@ export class SalesReturnComponent {
   }
 
   confirmReturn(): void {
-    if (!this.canCreate || !this.invoice?.id || !this.invoice.storeId) {
+    if (!this.canSave || !this.invoice?.id || !this.invoice.storeId) {
       this.confirmOpen = false;
       return;
     }
-    const paymentDate = toApiDate(this.returnForm.value.returnDate);
+    const paymentDate = toApiDate(this.returnForm.getRawValue().returnDate);
     if (!paymentDate) {
       this.toastr.warning('Return date is required.');
       return;
@@ -187,21 +222,30 @@ export class SalesReturnComponent {
       storeId: this.invoice.storeId,
       customerId: this.invoice.customerId,
       invoiceId: this.invoice.id,
+      restockingFee: this.restockingFee,
       returnItems: this.buildReturnItems(),
     });
 
-    this.returnApi
-      .createForSales(request)
-      .pipe(finalize(() => (this.submitting = false)))
-      .subscribe({
-        next: (result) => {
+    const save$ = this.isEdit
+      ? this.returnApi.updateReturn(this.returnId, request)
+      : this.returnApi.createForSales(request);
+
+    save$.pipe(finalize(() => (this.submitting = false))).subscribe({
+      next: (result) => {
+        this.confirmOpen = false;
+        if (this.isEdit) {
           this.toastr.success(
-            `Sales return ${result.returnNcId || ''} saved. Invoice totals were updated.`,
+            `Sales return ${result.returnNcId || ''} updated. Invoice totals were updated.`,
           );
-          this.confirmOpen = false;
-          this.reloadSelectedInvoice();
-        },
-      });
+          void this.router.navigate(['/sales/sales-return/list']);
+          return;
+        }
+        this.toastr.success(
+          `Sales return ${result.returnNcId || ''} saved. Invoice totals were updated.`,
+        );
+        this.reloadSelectedInvoice();
+      },
+    });
   }
 
   cancelReturn(): void {
@@ -212,6 +256,10 @@ export class SalesReturnComponent {
   }
 
   onClear(): void {
+    if (this.isEdit) {
+      void this.router.navigate(['/sales/sales-return/list']);
+      return;
+    }
     this.returnForm.reset({
       invoiceId: null,
       returnDate: new Date(),
@@ -219,6 +267,40 @@ export class SalesReturnComponent {
     this.invoiceOptions = [];
     this.clearInvoice();
     this.submitted = false;
+  }
+
+  private loadReturn(): void {
+    this.loadingRecord = true;
+    this.returnApi
+      .getReturnById(this.returnId)
+      .pipe(finalize(() => (this.loadingRecord = false)))
+      .subscribe({
+        next: (record) => this.patchReturn(record),
+        error: () => {
+          void this.router.navigate(['/sales/sales-return/list']);
+        },
+      });
+  }
+
+  private patchReturn(record: ReturnResponse): void {
+    if (record.returnType && record.returnType !== 'SALES_RETURN') {
+      this.toastr.error('This return is not a sales return');
+      void this.router.navigate(['/sales/sales-return/list']);
+      return;
+    }
+    if (!record.invoiceId) {
+      this.toastr.error('Sales return is missing an invoice');
+      void this.router.navigate(['/sales/sales-return/list']);
+      return;
+    }
+
+    this.returnNcId = record.returnNcId || '';
+    this.restockingFee = toNumber(record.restockingFee);
+    this.returnForm.patchValue({
+      invoiceId: record.invoiceId,
+      returnDate: toDatePickerValue(record.returnDate) ?? new Date(),
+    });
+    this.loadInvoice(record.invoiceId, record.returnItems ?? []);
   }
 
   private setupInvoiceTypeahead(): void {
@@ -255,7 +337,7 @@ export class SalesReturnComponent {
       );
   }
 
-  private loadInvoice(invoiceId: string): void {
+  private loadInvoice(invoiceId: string, previousItems: ReturnItemResponse[] = []): void {
     this.loadingInvoice = true;
     this.invoiceApi
       .getInvoiceById(invoiceId)
@@ -272,12 +354,56 @@ export class SalesReturnComponent {
           this.lines = (invoice.items ?? [])
             .filter((item) => item.id && item.itemId)
             .map((item) => this.toLine(item));
+          this.mergePreviousReturnItems(previousItems);
           if (this.lines.length === 0) {
             this.toastr.warning('This invoice has no items to return.');
           }
         },
         error: () => this.clearInvoice(),
       });
+  }
+
+  private mergePreviousReturnItems(previousItems: ReturnItemResponse[]): void {
+    if (!previousItems.length) {
+      return;
+    }
+
+    const previousQty = new Map<string, ReturnItemResponse>();
+    for (const item of previousItems) {
+      if (item.invoiceItemId) {
+        previousQty.set(item.invoiceItemId, item);
+      }
+    }
+
+    for (const line of this.lines) {
+      const previous = previousQty.get(line.invoiceItemId);
+      if (!previous) {
+        continue;
+      }
+      const qty = toNumber(previous.quantity);
+      line.invoiceQty = roundMoney(line.invoiceQty + qty);
+      line.returnQty = qty;
+      previousQty.delete(line.invoiceItemId);
+    }
+
+    for (const leftover of previousQty.values()) {
+      if (!leftover.invoiceItemId || !leftover.itemId) {
+        continue;
+      }
+      const qty = toNumber(leftover.quantity);
+      this.lines.push({
+        invoiceItemId: leftover.invoiceItemId,
+        itemId: leftover.itemId,
+        itemName: leftover.itemName || 'Item',
+        invoiceQty: qty,
+        unitPrice: toNumber(leftover.unitPrice),
+        discountAmount: toNumber(leftover.discountAmount),
+        vatAmount: toNumber(leftover.vatAmount),
+        taxAmount: toNumber(leftover.taxAmount),
+        lineTotal: toNumber(leftover.lineTotal),
+        returnQty: qty,
+      });
+    }
   }
 
   private reloadSelectedInvoice(): void {

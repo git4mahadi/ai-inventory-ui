@@ -9,6 +9,7 @@ import { SalesSlipComponent } from './sales-slip/sales-slip.component';
 import { InvoiceListComponent } from './invoice-list/invoice-list.component';
 import { DueCollectionComponent } from './due-collection/due-collection.component';
 import { SalesReturnComponent } from './sales-return/sales-return.component';
+import { SalesReturnListComponent } from './sales-return-list/sales-return-list.component';
 
 const routes: Routes = [
   {
@@ -53,10 +54,22 @@ const routes: Routes = [
     data: { roles: MenuRoles.dueCollection },
   },
   {
+    path: 'sales-return/list',
+    component: SalesReturnListComponent,
+    canActivate: [PermissionGuard],
+    data: { roles: MenuRoles.salesReturnList },
+  },
+  {
+    path: 'sales-return/edit/:id',
+    component: SalesReturnComponent,
+    canActivate: [PermissionGuard],
+    data: { roles: MenuRoles.salesReturnEdit },
+  },
+  {
     path: 'sales-return',
     component: SalesReturnComponent,
     canActivate: [PermissionGuard],
-    data: { roles: MenuRoles.salesReturn },
+    data: { roles: MenuRoles.salesReturnCreate },
   },
 ];
 

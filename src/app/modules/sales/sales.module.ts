@@ -8,6 +8,7 @@ import { SalesSlipComponent } from './sales-slip/sales-slip.component';
 import { InvoiceListComponent } from './invoice-list/invoice-list.component';
 import { DueCollectionComponent } from './due-collection/due-collection.component';
 import { SalesReturnComponent } from './sales-return/sales-return.component';
+import { SalesReturnListComponent } from './sales-return-list/sales-return-list.component';
 import { SalesRoutingModule } from './sales-routing.module';
 
 @NgModule({
@@ -19,6 +20,7 @@ import { SalesRoutingModule } from './sales-routing.module';
     InvoiceListComponent,
     DueCollectionComponent,
     SalesReturnComponent,
+    SalesReturnListComponent,
   ],
   imports: [SharedModule, SalesRoutingModule, AgGridAngular],
 })

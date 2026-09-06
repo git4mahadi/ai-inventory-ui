@@ -12,6 +12,8 @@ export class ReturnResponse {
   storeName?: string;
   customerId?: string;
   customerName?: string;
+  supplierId?: string;
+  supplierName?: string;
   subTotal?: number;
   discountAmount?: number;
   restockingFee?: number;
