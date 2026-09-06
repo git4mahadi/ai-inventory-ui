@@ -66,6 +66,7 @@ export const MenuRoles = {
 
   reconcileStockList: roles('ROLE_RECONCILE_STOCK', SEARCH),
   reconcileStockCreate: roles('ROLE_RECONCILE_STOCK', CREATE),
+  reconcileStockEdit: roles('ROLE_RECONCILE_STOCK', UPDATE),
   reconcileStockAny: roles('ROLE_RECONCILE_STOCK', CRUD),
 
   item: [

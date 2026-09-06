@@ -1,6 +1,6 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import {
   Subject,
@@ -15,7 +15,7 @@ import {
 import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { NgSelectComponent } from '@ng-select/ng-select';
-import { toApiDate } from '../../../core/utils/date.util';
+import { toApiDate, toDatePickerValue } from '../../../core/utils/date.util';
 import {
   ReconcileCartItem,
   reconcileCartKey,
@@ -34,6 +34,8 @@ import {
 import { LookupEnum } from '../../../models/enums/LookupEnum';
 import { ItemResponse } from '../../../models/response/ItemResponse';
 import { LookupResponse } from '../../../models/response/LookupResponse';
+import { ReconcileStockItemResponse } from '../../../models/response/ReconcileStockItemResponse';
+import { ReconcileStockResponse } from '../../../models/response/ReconcileStockResponse';
 import { StoreResponse } from '../../../models/response/StoreResponse';
 import { ItemSearchDto } from '../../../models/search/ItemSearchDto';
 import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
@@ -43,12 +45,12 @@ import { ReconcileStockApiService } from '../../../services/ReconcileStockApiSer
 import { StoreApiService } from '../../../services/StoreApiService';
 
 @Component({
-  selector: 'app-reconcile-stock-create',
+  selector: 'app-reconcile-stock-edit',
   standalone: false,
-  templateUrl: './reconcile-stock-create.component.html',
-  styleUrl: './reconcile-stock-create.component.scss',
+  templateUrl: './reconcile-stock-edit.component.html',
+  styleUrl: './reconcile-stock-edit.component.scss',
 })
-export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
+export class ReconcileStockEditComponent implements OnInit, OnDestroy {
   @ViewChild('pickerItemSelect') pickerItemSelect?: NgSelectComponent;
   @ViewChild('pickerQuantityInput') pickerQuantityInput?: ElementRef<HTMLInputElement>;
 
@@ -73,11 +75,15 @@ export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
   loadingStores = false;
   loadingItems = false;
   loadingLookups = false;
+  loadingRecord = true;
   submitted = false;
   loading = false;
+  reconcileStockId = '';
+  reconcileStockNcId = '';
 
   private readonly destroy$ = new Subject<void>();
   private previousStoreId: string | null = null;
+  private hydrating = false;
 
   constructor(
     private readonly formBuilder: FormBuilder,
@@ -85,12 +91,13 @@ export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
     private readonly storeApi: StoreApiService,
     private readonly itemApi: ItemApiService,
     private readonly lookupApi: LookupApiService,
+    private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly toastr: ToastrService,
   ) {
     this.reconcileForm = this.formBuilder.group({
       storeId: [null as string | null, Validators.required],
-      reconcileDate: [new Date(), Validators.required],
+      reconcileDate: [null as Date | null, Validators.required],
     });
     this.pickerForm = this.formBuilder.group({
       itemId: [null as string | null],
@@ -109,6 +116,13 @@ export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.reconcileStockId = this.route.snapshot.paramMap.get('id') || '';
+    if (!this.reconcileStockId) {
+      this.toastr.error('Stock reconcile id is missing');
+      void this.router.navigate(['/reconcile-stocks/list']);
+      return;
+    }
+
     this.previousStoreId = this.reconcileForm.get('storeId')?.value ?? null;
     this.loadStores();
     this.loadPackSizes();
@@ -117,6 +131,7 @@ export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
       .get('storeId')
       ?.valueChanges.pipe(takeUntil(this.destroy$))
       .subscribe((storeId) => this.onStoreChange(storeId));
+    this.loadReconcileStock();
   }
 
   ngOnDestroy(): void {
@@ -272,25 +287,18 @@ export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
 
     this.loading = true;
     this.reconcileStockApi
-      .createReconcileStock(this.buildDto())
+      .updateReconcileStock(this.reconcileStockId, this.buildDto())
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
         next: () => {
-          this.toastr.success('Stock reconcile created successfully');
+          this.toastr.success('Stock reconcile updated successfully');
           void this.router.navigate(['/reconcile-stocks/list']);
         },
       });
   }
 
-  onClear(): void {
-    this.reconcileForm.reset({
-      storeId: this.defaultStoreId(),
-      reconcileDate: new Date(),
-    });
-    this.cartItems = [];
-    this.resetPicker(true);
-    this.submitted = false;
-    this.previousStoreId = this.reconcileForm.get('storeId')?.value ?? null;
+  onCancel(): void {
+    void this.router.navigate(['/reconcile-stocks/list']);
   }
 
   private buildDto(): ReconcileStockDto {
@@ -316,7 +324,7 @@ export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
   }
 
   private onStoreChange(storeId: string | null): void {
-    if (storeId === this.previousStoreId) {
+    if (this.hydrating || storeId === this.previousStoreId) {
       return;
     }
     const hadCart = this.cartItems.length > 0;
@@ -366,6 +374,68 @@ export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
       });
   }
 
+  private loadReconcileStock(): void {
+    this.loadingRecord = true;
+    this.reconcileStockApi
+      .getReconcileStockById(this.reconcileStockId)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => (this.loadingRecord = false)),
+      )
+      .subscribe({
+        next: (record) => this.patchRecord(record),
+        error: () => {
+          void this.router.navigate(['/reconcile-stocks/list']);
+        },
+      });
+  }
+
+  private patchRecord(record: ReconcileStockResponse): void {
+    this.hydrating = true;
+    this.reconcileStockNcId = record.reconcileStockNcId || '';
+    this.previousStoreId = record.storeId ?? null;
+    this.ensureStoreOption(record);
+    this.reconcileForm.patchValue({
+      storeId: record.storeId ?? null,
+      reconcileDate: toDatePickerValue(record.reconcileDate),
+    });
+    this.cartItems = (record.items ?? [])
+      .filter((item): item is ReconcileStockItemResponse & { itemId: string } => !!item.itemId)
+      .map((item) => this.toCartItem(item));
+    this.hydrating = false;
+  }
+
+  private toCartItem(item: ReconcileStockItemResponse): ReconcileCartItem {
+    const type = (item.reconcileTypeEnumKey === 'WRITE_ON' ? 'WRITE_ON' : 'WRITE_OFF') as ReconcileType;
+    const uomId = this.resolveUomId(item.uom) || null;
+    const qty = roundQty(toNumber(item.reconcileQty));
+    if (item.uom) {
+      this.ensurePackSizeOption(uomId ?? item.uom, item.uom);
+    }
+    return {
+      itemId: item.itemId || '',
+      itemName: item.itemName || item.itemId || '',
+      reconcileTypeEnumKey: type,
+      reconcileQty: qty,
+      qtyInput: String(qty),
+      uom: item.uom,
+      uomId,
+      batchNo: item.batchNo || '',
+      expireDate: toDatePickerValue(item.expireDate),
+      remarks: item.remarks || '',
+    };
+  }
+
+  private ensureStoreOption(record: ReconcileStockResponse): void {
+    if (!record.storeId || this.storeOptions.some((store) => store.id === record.storeId)) {
+      return;
+    }
+    this.storeOptions = [
+      { id: record.storeId, storeName: record.storeName || record.storeId },
+      ...this.storeOptions,
+    ];
+  }
+
   private loadStores(): void {
     this.loadingStores = true;
     this.storeApi
@@ -375,12 +445,7 @@ export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
         finalize(() => (this.loadingStores = false)),
       )
       .subscribe((stores) => {
-        this.storeOptions = stores ?? [];
-        const defaultStoreId = this.defaultStoreId();
-        if (defaultStoreId && !this.reconcileForm.get('storeId')?.value) {
-          this.reconcileForm.patchValue({ storeId: defaultStoreId });
-          this.previousStoreId = defaultStoreId;
-        }
+        this.storeOptions = this.mergeOptions(this.storeOptions, stores ?? []);
       });
   }
 
@@ -393,7 +458,10 @@ export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
         finalize(() => (this.loadingLookups = false)),
       )
       .subscribe((lookupsByKey) => {
-        this.packSizeOptions = lookupsByKey[LookupEnum.PACK_SIZE.key] ?? [];
+        this.packSizeOptions = this.mergeOptions(
+          this.packSizeOptions,
+          lookupsByKey[LookupEnum.PACK_SIZE.key] ?? [],
+        );
       });
   }
 
@@ -485,13 +553,5 @@ export class ReconcileStockCreateComponent implements OnInit, OnDestroy {
       keys.add(key);
     }
     return false;
-  }
-
-  private defaultStoreId(): string | null {
-    const mainStore = this.storeOptions.find((store) => store.isMain);
-    if (mainStore?.id) {
-      return mainStore.id;
-    }
-    return this.storeOptions.length === 1 ? this.storeOptions[0].id ?? null : null;
   }
 }

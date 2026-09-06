@@ -187,7 +187,18 @@
                         }
                       </ng-select>
                     </td>
-                    <td class="col-qty">{{ item.reconcileQty | bdNumber }}</td>
+                    <td class="col-qty">
+                      <input
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
+                        class="form-control form-control-sm"
+                        [ngModel]="item.qtyInput ?? item.reconcileQty"
+                        (ngModelChange)="onCartQtyChange(i, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        (keydown)="onDecimalKeydown($event)"
+                      />
+                    </td>
                     <td class="col-remarks">
                       <input
                         type="text"

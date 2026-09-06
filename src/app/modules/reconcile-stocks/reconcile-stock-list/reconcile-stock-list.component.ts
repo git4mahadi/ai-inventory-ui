@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
+import { Router } from '@angular/router';
 import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
@@ -80,9 +81,9 @@ export class ReconcileStockListComponent implements OnInit {
     {
       colId: 'actions',
       headerName: 'Actions',
-      width: 102,
-      minWidth: 102,
-      maxWidth: 102,
+      width: 132,
+      minWidth: 132,
+      maxWidth: 132,
       cellClass: 'col-actions',
       sortable: false,
       resizable: false,
@@ -126,6 +127,7 @@ export class ReconcileStockListComponent implements OnInit {
     private readonly storeApi: StoreApiService,
     private readonly toastr: ToastrService,
     private readonly authService: AuthService,
+    private readonly router: Router,
   ) {
     const access = crudAccess(this.authService, 'ROLE_RECONCILE_STOCK');
     this.canCreate = access.canCreate;
@@ -156,6 +158,8 @@ export class ReconcileStockListComponent implements OnInit {
     const action = target.closest<HTMLElement>('[data-action]')?.dataset['action'];
     if (action === 'view') {
       this.openView(event.data);
+    } else if (action === 'edit' && this.canUpdate && event.data.id) {
+      void this.router.navigate(['/reconcile-stocks/edit', event.data.id]);
     } else if (action === 'delete' && this.canDelete) {
       this.requestDelete(event.data);
     }
@@ -323,6 +327,7 @@ export class ReconcileStockListComponent implements OnInit {
     }
 
     return renderCrudActionButtons({
+      canUpdate: this.canUpdate,
       canDelete: this.canDelete,
       deleting: this.deletingId === row.id,
       entityLabel: 'stock reconcile',

@@ -6,6 +6,7 @@ export interface ReconcileCartItem {
   itemCode?: string;
   reconcileTypeEnumKey: ReconcileType;
   reconcileQty: number;
+  qtyInput?: string;
   uom?: string;
   uomId?: string | null;
   batchNo: string;
