@@ -1,9 +1,19 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import { NgSelectComponent } from '@ng-select/ng-select';
-import { finalize } from 'rxjs';
+import {
+  Subject,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  of,
+  switchMap,
+  takeUntil,
+} from 'rxjs';
+import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import {
   CellClickedEvent,
@@ -22,9 +32,12 @@ import { ExpenseDto } from '../../../models/dto/ExpenseDto';
 import { LookupEnum } from '../../../models/enums/LookupEnum';
 import { ExpenseResponse } from '../../../models/response/ExpenseResponse';
 import { LookupResponse } from '../../../models/response/LookupResponse';
+import { StoreResponse } from '../../../models/response/StoreResponse';
 import { ExpenseSearchDto } from '../../../models/search/ExpenseSearchDto';
+import { StoreSearchDto } from '../../../models/search/StoreSearchDto';
 import { ExpenseApiService } from '../../../services/ExpenseApiService';
 import { LookupApiService } from '../../../services/LookupApiService';
+import { StoreApiService } from '../../../services/StoreApiService';
 import {
   appGridDefaultColDef,
   appGridModules,
@@ -40,6 +53,8 @@ import {
 interface ExpenseCartItem {
   key: string;
   expenseDate: string;
+  storeId: string;
+  storeName: string;
   expenseHeadId: string;
   expenseHeadName: string;
   amount: number;
@@ -53,11 +68,12 @@ interface ExpenseCartItem {
   templateUrl: './expense-list.component.html',
   styleUrl: './expense-list.component.scss',
 })
-export class ExpenseListComponent implements OnInit {
+export class ExpenseListComponent implements OnInit, OnDestroy {
   @ViewChild('expenseHeadSelect') expenseHeadSelect?: NgSelectComponent;
   readonly expenseForm: FormGroup;
   readonly editForm: FormGroup;
   readonly searchForm: FormGroup;
+  readonly editStoreTypeahead$ = new Subject<string>();
   readonly datePickerConfig: Partial<BsDatepickerConfig> = {
     dateInputFormat: 'DD-MMM-YY',
     containerClass: 'theme-green',
@@ -73,6 +89,13 @@ export class ExpenseListComponent implements OnInit {
       minWidth: 120,
       cellClass: 'cell-mono',
       valueFormatter: (params) => this.formatDate(params.value),
+    },
+    {
+      field: 'storeName',
+      headerName: 'Store',
+      flex: 1,
+      minWidth: 130,
+      valueFormatter: (params) => params.value || '—',
     },
     {
       field: 'expenseHeadName',
@@ -135,12 +158,16 @@ export class ExpenseListComponent implements OnInit {
   expenses: ExpenseResponse[] = [];
   cartItems: ExpenseCartItem[] = [];
   expenseHeadOptions: LookupResponse[] = [];
+  storeOptions: StoreResponse[] = [];
+  editStoreOptions: StoreResponse[] = [];
   submitted = false;
   editSubmitted = false;
   saving = false;
   updating = false;
   loading = false;
   loadingHeads = false;
+  loadingStores = false;
+  loadingEditStores = false;
   hasLoaded = false;
   editingExpense: ExpenseResponse | null = null;
   deletingId: string | null = null;
@@ -149,6 +176,7 @@ export class ExpenseListComponent implements OnInit {
   canUpdate = false;
   canDelete = false;
   private gridApi?: GridApi<ExpenseResponse>;
+  private readonly destroy$ = new Subject<void>();
 
   page = 0;
   size = 10;
@@ -159,6 +187,7 @@ export class ExpenseListComponent implements OnInit {
     private readonly formBuilder: FormBuilder,
     private readonly expenseApi: ExpenseApiService,
     private readonly lookupApi: LookupApiService,
+    private readonly storeApi: StoreApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly toastr: ToastrService,
@@ -175,6 +204,7 @@ export class ExpenseListComponent implements OnInit {
       searchTerm: [''],
       expenseDateFrom: [null as Date | null],
       expenseDateTo: [null as Date | null],
+      storeId: [null as string | null],
       expenseHeadId: [null as string | null],
     });
   }
@@ -204,11 +234,14 @@ export class ExpenseListComponent implements OnInit {
       return '';
     }
     const date = this.formatDate(this.pendingDelete.expenseDate);
+    const store = this.pendingDelete.storeName || 'Store';
     const head = this.pendingDelete.expenseHeadName || 'Expense';
-    return `${date} · ${head}`;
+    return `${date} · ${store} · ${head}`;
   }
 
   ngOnInit(): void {
+    this.setupEditStoreTypeahead();
+    this.loadStores();
     this.loadExpenseHeads();
     const routeId = this.route.snapshot.paramMap.get('id');
     if (routeId) {
@@ -216,8 +249,38 @@ export class ExpenseListComponent implements OnInit {
     }
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   lookupLabel(lookup: LookupResponse): string {
     return lookup.lookupName || '';
+  }
+
+  storeLabel(store: StoreResponse | null | undefined): string {
+    if (!store) {
+      return '';
+    }
+    const name = store.storeName?.trim() || '';
+    const code = store.storeCode?.trim() || '';
+    if (name && code) {
+      return `${name} (${code})`;
+    }
+    return name || code || store.id || '';
+  }
+
+  readonly storeSearchFn = (term: string, item: StoreResponse): boolean => {
+    const query = term?.trim().toLowerCase();
+    if (!query) {
+      return true;
+    }
+    const haystack = `${item.storeName || ''} ${item.storeCode || ''}`.toLowerCase();
+    return haystack.includes(query);
+  };
+
+  onEditStoreOpen(): void {
+    this.editStoreTypeahead$.next('');
   }
 
   formatDate(value?: string): string {
@@ -251,6 +314,7 @@ export class ExpenseListComponent implements OnInit {
       searchTerm: '',
       expenseDateFrom: null,
       expenseDateTo: null,
+      storeId: null,
       expenseHeadId: null,
     });
     this.reloadGrid();
@@ -293,9 +357,9 @@ export class ExpenseListComponent implements OnInit {
       return;
     }
 
-    if (this.hasDraftLine() && !this.onAddToCart(false)) {
-      return;
-    }
+    // if (this.hasDraftLine() && !this.onAddToCart(false)) {
+    //   return;
+    // }
 
     if (!this.cartItems.length) {
       this.toastr.error('Add at least one expense to the cart');
@@ -307,6 +371,7 @@ export class ExpenseListComponent implements OnInit {
       (item) =>
         new ExpenseDto({
           expenseDate: item.expenseDate,
+          storeId: item.storeId,
           expenseHeadId: item.expenseHeadId,
           amount: item.amount,
           remarks: item.remarks,
@@ -335,6 +400,7 @@ export class ExpenseListComponent implements OnInit {
     this.cartItems = [];
     this.expenseForm.reset({
       expenseDate: new Date(),
+      storeId: null,
       expenseHeadId: null,
       amount: null,
       remarks: '',
@@ -352,8 +418,10 @@ export class ExpenseListComponent implements OnInit {
   private resetEditState(): void {
     this.editingExpense = null;
     this.editSubmitted = false;
+    this.editStoreOptions = [];
     this.editForm.reset({
       expenseDate: new Date(),
+      storeId: null,
       expenseHeadId: null,
       amount: null,
       remarks: '',
@@ -439,7 +507,8 @@ export class ExpenseListComponent implements OnInit {
     this.patchEditForm(normalized);
     this.expenseApi.getExpenseById(normalized.id).subscribe({
       next: (full) => {
-        if (this.editingExpense?.id === normalized.id) {
+        // Don't overwrite fields the user already changed in the modal.
+        if (this.editingExpense?.id === normalized.id && !this.editForm.dirty) {
           this.patchEditForm(full);
         }
       },
@@ -467,11 +536,18 @@ export class ExpenseListComponent implements OnInit {
     this.editSubmitted = false;
     this.editForm.patchValue({
       expenseDate: toDatePickerValue(normalized.expenseDate),
+      storeId: normalized.storeId != null ? String(normalized.storeId) : null,
       expenseHeadId: normalized.expenseHeadId ?? null,
       amount: normalized.amount ?? null,
       remarks: normalized.remarks ?? '',
       enabled: normalized.enabled ?? true,
     });
+    this.editForm.markAsPristine();
+
+    this.ensureEditStoreOption(
+      normalized.storeId != null ? String(normalized.storeId) : null,
+      normalized.storeName,
+    );
 
     if (
       normalized.expenseHeadId &&
@@ -487,6 +563,32 @@ export class ExpenseListComponent implements OnInit {
     }
   }
 
+  private ensureEditStoreOption(storeId: string | null, storeName?: string): void {
+    if (!storeId) {
+      return;
+    }
+
+    const id = String(storeId);
+    if (this.editStoreOptions.some((store) => store.id === id)) {
+      return;
+    }
+
+    if (storeName) {
+      this.editStoreOptions = this.mergeOptions(this.editStoreOptions, [{ id, storeName }]);
+      return;
+    }
+
+    this.storeApi.getStoreById(id).subscribe({
+      next: (store) => {
+        if (store?.id) {
+          this.editStoreOptions = this.mergeOptions(this.editStoreOptions, [
+            { ...store, id: String(store.id) },
+          ]);
+        }
+      },
+    });
+  }
+
   private getExpenseRows(params: IGetRowsParams<ExpenseResponse>): void {
     this.loading = true;
     const formValue = this.searchForm.value;
@@ -498,6 +600,7 @@ export class ExpenseListComponent implements OnInit {
       searchTerm: formValue.searchTerm?.trim() || undefined,
       expenseDateFrom: dateFrom || dateTo,
       expenseDateTo: dateTo || dateFrom,
+      storeId: formValue.storeId || undefined,
       expenseHeadId: formValue.expenseHeadId || undefined,
       page: pageNumber,
       size: pageSize,
@@ -527,6 +630,101 @@ export class ExpenseListComponent implements OnInit {
       });
   }
 
+  private loadStores(): void {
+    this.loadingStores = true;
+    this.storeApi
+      .searchList(new StoreSearchDto({ enabled: true }))
+      .pipe(finalize(() => (this.loadingStores = false)))
+      .subscribe({
+        next: (stores) => {
+          this.storeOptions = (stores ?? []).map((store) => ({
+            ...store,
+            id: store.id != null ? String(store.id) : store.id,
+          }));
+        },
+      });
+  }
+
+  private setupEditStoreTypeahead(): void {
+    this.editStoreTypeahead$
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((term) => this.searchEditStores(term)),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((stores) => {
+        this.editStoreOptions = this.mergeOptions(
+          this.selectedEditStoreOptions(),
+          stores ?? [],
+        );
+      });
+  }
+
+  private searchEditStores(term: string) {
+    this.loadingEditStores = true;
+    return this.storeApi
+      .searchTerm(
+        new StoreSearchDto({
+          searchTerm: term?.trim() || undefined,
+          enabled: true,
+        }),
+      )
+      .pipe(
+        map((stores) => {
+          const list = Array.isArray(stores) ? stores : [];
+          return list.map((store) => ({
+            ...store,
+            id: store.id != null ? String(store.id) : store.id,
+          }));
+        }),
+        catchError(() => of([] as StoreResponse[])),
+        finalize(() => (this.loadingEditStores = false)),
+      );
+  }
+
+  private selectedEditStoreOptions(): StoreResponse[] {
+    const selectedId = this.editForm.get('storeId')?.value as string | null;
+    if (!selectedId) {
+      return [];
+    }
+
+    const fromOptions = this.editStoreOptions.find(
+      (store) => store.id === selectedId && !!store.storeName,
+    );
+    if (fromOptions) {
+      return [fromOptions];
+    }
+
+    const fromStoreList = this.storeOptions.find((store) => store.id === selectedId);
+    if (fromStoreList) {
+      return [{ ...fromStoreList, id: String(fromStoreList.id) }];
+    }
+
+    const isOriginalStore =
+      this.editingExpense?.storeId != null &&
+      String(this.editingExpense.storeId) === selectedId;
+
+    return [
+      {
+        id: selectedId,
+        storeName: isOriginalStore
+          ? this.editingExpense?.storeName || selectedId
+          : selectedId,
+      },
+    ];
+  }
+
+  private mergeOptions<T extends { id?: string }>(kept: T[], incoming: T[]): T[] {
+    const byId = new Map<string, T>();
+    for (const option of [...kept, ...incoming]) {
+      if (option.id) {
+        byId.set(option.id, option);
+      }
+    }
+    return [...byId.values()];
+  }
+
   private loadExpenseHeads(): void {
     this.loadingHeads = true;
     this.lookupApi
@@ -542,6 +740,7 @@ export class ExpenseListComponent implements OnInit {
   private createExpenseForm(): FormGroup {
     return this.formBuilder.group({
       expenseDate: [new Date() as Date | null, Validators.required],
+      storeId: [null as string | null, Validators.required],
       expenseHeadId: [null as string | null, Validators.required],
       amount: [null, [Validators.required, Validators.min(0.01)]],
       remarks: ['', [Validators.maxLength(255)]],
@@ -551,6 +750,7 @@ export class ExpenseListComponent implements OnInit {
 
   private toDto(value: {
     expenseDate?: Date | string | null;
+    storeId?: string | null;
     expenseHeadId?: string | null;
     amount?: number | null;
     remarks?: string | null;
@@ -558,6 +758,7 @@ export class ExpenseListComponent implements OnInit {
   }): ExpenseDto {
     return new ExpenseDto({
       expenseDate: toApiDate(value.expenseDate),
+      storeId: value.storeId || undefined,
       expenseHeadId: value.expenseHeadId || undefined,
       amount: Number(value.amount),
       remarks: value.remarks?.trim() || undefined,
@@ -567,20 +768,24 @@ export class ExpenseListComponent implements OnInit {
 
   private buildCartItem(value: {
     expenseDate?: Date | string | null;
+    storeId?: string | null;
     expenseHeadId?: string | null;
     amount?: number | null;
     remarks?: string | null;
     enabled?: boolean;
   }): ExpenseCartItem | null {
     const dto = this.toDto(value);
-    if (!dto.expenseDate || !dto.expenseHeadId || dto.amount == null) {
+    if (!dto.expenseDate || !dto.storeId || !dto.expenseHeadId || dto.amount == null) {
       return null;
     }
 
+    const store = this.storeOptions.find((item) => item.id === dto.storeId);
     const head = this.expenseHeadOptions.find((lookup) => lookup.id === dto.expenseHeadId);
     return {
       key: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       expenseDate: dto.expenseDate,
+      storeId: dto.storeId,
+      storeName: store?.storeName || store?.storeCode || 'Store',
       expenseHeadId: dto.expenseHeadId,
       expenseHeadName: head?.parentFullName || head?.lookupName || 'Expense head',
       amount: dto.amount,
@@ -591,7 +796,7 @@ export class ExpenseListComponent implements OnInit {
 
   private hasDraftLine(): boolean {
     const value = this.expenseForm.getRawValue();
-    return !!(value.expenseHeadId || value.amount || value.remarks?.trim());
+    return !!(value.storeId || value.expenseHeadId || value.amount || value.remarks?.trim());
   }
 
   private resetLineFields(): void {

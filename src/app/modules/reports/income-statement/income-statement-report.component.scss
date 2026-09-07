@@ -146,6 +146,12 @@
     background: #e7f4ec;
   }
 
+  tr.is-expense td {
+    font-weight: 750;
+    color: #7a3410;
+    background: #fff4e8;
+  }
+
   tr.is-net td {
     font-weight: 800;
     color: #0f3d28;
@@ -209,6 +215,7 @@
   .report-table tr.is-subtotal td,
   .report-table tr.is-return td,
   .report-table tfoot td,
+  .report-table tr.is-expense td,
   .report-table tr.is-net td {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;

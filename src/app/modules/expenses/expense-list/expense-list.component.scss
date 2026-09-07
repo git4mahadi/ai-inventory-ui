@@ -61,7 +61,7 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: minmax(140px, 0.9fr) minmax(180px, 1.2fr) minmax(120px, 0.8fr) minmax(180px, 1.3fr);
+  grid-template-columns: minmax(130px, 0.85fr) minmax(150px, 1fr) minmax(160px, 1.1fr) minmax(110px, 0.75fr);
   gap: 0.55rem 0.65rem;
 }
 
@@ -353,7 +353,7 @@
 
 .filter-bar {
   display: grid;
-  grid-template-columns: 1.1fr 0.95fr 0.95fr 1.2fr auto auto;
+  grid-template-columns: 1fr 0.9fr 0.9fr 1fr 1fr auto auto;
   gap: 0.4rem;
   padding: 0.55rem 0.85rem;
   border-bottom: 1px solid rgba(18, 53, 40, 0.07);

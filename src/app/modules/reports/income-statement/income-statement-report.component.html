@@ -73,64 +73,71 @@
 
       @if (!rows.length) {
         <div class="empty-hint">No invoices found for these filters.</div>
-      } @else {
-        <table class="report-table">
-          <thead>
-            <tr>
-              <th class="col-sl">SL</th>
-              <th>Invoice</th>
-              <th>Date</th>
-              <th>Customer</th>
-              <th class="col-num">Sales</th>
-              <th class="col-num">Collection</th>
-              <th class="col-num">Due</th>
-              <th class="col-num">Return</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (line of lines; track $index) {
-              @if (line.kind === 'row') {
-                <tr [class.is-return]="isReturnRow(line.data)">
-                  <td class="col-sl">{{ line.sl }}</td>
-                  <td>{{ line.data.invoiceNcId || '—' }}</td>
-                  <td>{{ displayDate(line.data.invoiceDate) }}</td>
-                  <td class="col-name">{{ line.data.customerName || 'Walk-in' }}</td>
-                  <td class="col-num">{{ line.data.totalSales | bdNumber }}</td>
-                  <td class="col-num">{{ line.data.totalCollection | bdNumber }}</td>
-                  <td class="col-num">{{ line.data.totalDue | bdNumber }}</td>
-                  <td class="col-num">{{ line.data.totalReturn | bdNumber }}</td>
-                </tr>
-              } @else {
-                <tr class="is-subtotal">
-                  <td colspan="4" class="col-total-label">
-                    Subtotal {{ displayDate(line.date) }}
-                  </td>
-                  <td class="col-num">{{ line.totals.totalSales | bdNumber }}</td>
-                  <td class="col-num">{{ line.totals.totalCollection | bdNumber }}</td>
-                  <td class="col-num">{{ line.totals.totalDue | bdNumber }}</td>
-                  <td class="col-num">{{ line.totals.totalReturn | bdNumber }}</td>
-                </tr>
-              }
-            }
-          </tbody>
-          <tfoot>
-            <tr class="is-grand">
-              <td colspan="4" class="col-total-label">Grand total</td>
-              <td class="col-num">{{ grandTotal.totalSales | bdNumber }}</td>
-              <td class="col-num">{{ grandTotal.totalCollection | bdNumber }}</td>
-              <td class="col-num">{{ grandTotal.totalDue | bdNumber }}</td>
-              <td class="col-num">{{ grandTotal.totalReturn | bdNumber }}</td>
-            </tr>
-            <tr class="is-net">
-              <td colspan="4" class="col-total-label">Net Collection</td>
-              <td></td>
-              <td class="col-num">{{ netCollection | bdNumber }}</td>
-              <td></td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
       }
+
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th class="col-sl">SL</th>
+            <th>Invoice</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th class="col-num">Sales</th>
+            <th class="col-num">Collection</th>
+            <th class="col-num">Due</th>
+            <th class="col-num">Return</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (line of lines; track $index) {
+            @if (line.kind === 'row') {
+              <tr [class.is-return]="isReturnRow(line.data)">
+                <td class="col-sl">{{ line.sl }}</td>
+                <td>{{ line.data.invoiceNcId || '—' }}</td>
+                <td>{{ displayDate(line.data.invoiceDate) }}</td>
+                <td class="col-name">{{ line.data.customerName || 'Walk-in' }}</td>
+                <td class="col-num">{{ line.data.totalSales | bdNumber }}</td>
+                <td class="col-num">{{ line.data.totalCollection | bdNumber }}</td>
+                <td class="col-num">{{ line.data.totalDue | bdNumber }}</td>
+                <td class="col-num">{{ line.data.totalReturn | bdNumber }}</td>
+              </tr>
+            } @else {
+              <tr class="is-subtotal">
+                <td colspan="4" class="col-total-label">
+                  Subtotal {{ displayDate(line.date) }}
+                </td>
+                <td class="col-num">{{ line.totals.totalSales | bdNumber }}</td>
+                <td class="col-num">{{ line.totals.totalCollection | bdNumber }}</td>
+                <td class="col-num">{{ line.totals.totalDue | bdNumber }}</td>
+                <td class="col-num">{{ line.totals.totalReturn | bdNumber }}</td>
+              </tr>
+            }
+          }
+        </tbody>
+        <tfoot>
+          <tr class="is-grand">
+            <td colspan="4" class="col-total-label">Grand total</td>
+            <td class="col-num">{{ grandTotal.totalSales | bdNumber }}</td>
+            <td class="col-num">{{ grandTotal.totalCollection | bdNumber }}</td>
+            <td class="col-num">{{ grandTotal.totalDue | bdNumber }}</td>
+            <td class="col-num">{{ grandTotal.totalReturn | bdNumber }}</td>
+          </tr>
+          <tr class="is-expense">
+            <td colspan="4" class="col-total-label">Total Expense</td>
+            <td></td>
+            <td class="col-num">{{ totalExpense | bdNumber }}</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr class="is-net">
+            <td colspan="4" class="col-total-label">Net Collection</td>
+            <td></td>
+            <td class="col-num">{{ netCollection | bdNumber }}</td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
     </section>
   }
 </div>

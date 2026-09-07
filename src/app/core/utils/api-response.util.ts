@@ -241,6 +241,8 @@ export function normalizeExpense(payload: unknown): ExpenseResponse | null {
 
   if (
     'expenseDate' in value ||
+    'storeId' in value ||
+    'storeName' in value ||
     'expenseHeadId' in value ||
     'expenseHeadName' in value ||
     'amount' in value ||

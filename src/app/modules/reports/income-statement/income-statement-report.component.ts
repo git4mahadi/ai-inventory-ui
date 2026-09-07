@@ -42,6 +42,8 @@ export class IncomeStatementReportComponent implements OnInit, OnDestroy {
   rows: IncomeStatementReportDto[] = [];
   lines: IncomeStatementLine[] = [];
   grandTotal: MoneyTotals = this.emptyTotals();
+  totalExpense = 0;
+  reportStoreName = '';
 
   loadingStores = false;
   loading = false;
@@ -68,13 +70,20 @@ export class IncomeStatementReportComponent implements OnInit, OnDestroy {
   }
 
   get storeName(): string {
+    if (this.reportStoreName) {
+      return this.reportStoreName;
+    }
     const storeId = this.filterForm.get('storeId')?.value as string | null;
     const store = this.storeOptions.find((option) => option.id === storeId);
     return store ? this.storeLabel(store) : '';
   }
 
   get netCollection(): number {
-    return this.grandTotal.totalCollection - this.grandTotal.totalReturn;
+    return (
+      this.grandTotal.totalCollection -
+      this.grandTotal.totalReturn -
+      this.totalExpense
+    );
   }
 
   ngOnInit(): void {
@@ -124,10 +133,14 @@ export class IncomeStatementReportComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
         finalize(() => (this.loading = false)),
       )
-      .subscribe((rows) => {
-        this.rows = rows ?? [];
+      .subscribe((report) => {
+        this.rows = report?.data ?? [];
         this.lines = this.buildLines(this.rows);
         this.grandTotal = this.sumRows(this.rows);
+        this.totalExpense = this.readTotalExpense(report?.map);
+        this.reportStoreName = report?.store
+          ? this.storeLabel(report.store)
+          : '';
         this.hasLoaded = true;
         this.printedOn = toDisplayDate(toApiDate(new Date()));
         this.startDateLabel = toDisplayDate(startDate);
@@ -203,6 +216,15 @@ export class IncomeStatementReportComponent implements OnInit, OnDestroy {
       totalDue: 0,
       totalReturn: 0,
     };
+  }
+
+  private readTotalExpense(map?: Record<string, unknown>): number {
+    const value = map?.['totalExpense'];
+    if (value == null || value === '') {
+      return 0;
+    }
+    const amount = Number(value);
+    return Number.isFinite(amount) ? amount : 0;
   }
 
   private defaultStartDate(): Date {

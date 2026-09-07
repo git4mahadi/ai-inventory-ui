@@ -9,6 +9,7 @@ import { unwrapApiData } from '../core/utils/api-response.util';
 import { CurrentExpiredStockReportDto } from '../models/report/CurrentExpiredStockReportDto';
 import { IncomeStatementReportDto } from '../models/report/IncomeStatementReportDto';
 import { ItemWiseCurrentStockReportDto } from '../models/report/ItemWiseCurrentStockReportDto';
+import { ReportResponse } from '../models/report/ReportResponse';
 
 @Injectable({
   providedIn: 'root',
@@ -68,23 +69,40 @@ export class ReportApiService {
     storeId: string,
     startDate: string,
     endDate: string,
-  ): Observable<IncomeStatementReportDto[]> {
+  ): Observable<ReportResponse<IncomeStatementReportDto>> {
     const params = new HttpParams()
       .set('storeId', storeId)
       .set('startDate', startDate)
       .set('endDate', endDate);
     return this.http
-      .get<ApiResponse<IncomeStatementReportDto[]>>(
+      .get<ApiResponse<ReportResponse<IncomeStatementReportDto>>>(
         `${this.baseUrl}/print-income-statement`,
         { params },
       )
       .pipe(
         unwrapApiData(),
-        map((result) => (Array.isArray(result) ? result : [])),
+        map((result) => this.normalizeIncomeStatementReport(result)),
         catchError((err: { error?: { message?: string } }) => {
           this.toast.error(err?.error?.message || 'Failed to load income statement');
           return throwError(() => err);
         }),
       );
+  }
+
+  private normalizeIncomeStatementReport(
+    result: unknown,
+  ): ReportResponse<IncomeStatementReportDto> {
+    if (Array.isArray(result)) {
+      return { data: result, map: {} };
+    }
+    if (!result || typeof result !== 'object') {
+      return { data: [], map: {} };
+    }
+    const value = result as ReportResponse<IncomeStatementReportDto>;
+    return {
+      store: value.store,
+      data: Array.isArray(value.data) ? value.data : [],
+      map: value.map && typeof value.map === 'object' ? value.map : {},
+    };
   }
 }

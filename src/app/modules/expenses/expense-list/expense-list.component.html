@@ -36,6 +36,37 @@
           }
         </div>
 
+            <div class="field">
+              <label for="storeId" class="form-label">
+                Store <span class="required-mark" aria-hidden="true">*</span>
+              </label>
+              <ng-select
+                id="storeId"
+                class="form-ng-select"
+                formControlName="storeId"
+                placeholder="Select store..."
+                appendTo="body"
+                [items]="storeOptions"
+                bindLabel="storeName"
+                bindValue="id"
+                [searchFn]="storeSearchFn"
+                [clearable]="true"
+                [searchable]="true"
+                [loading]="loadingStores"
+                [class.is-invalid]="submitted && f['storeId'].invalid"
+              >
+                <ng-template ng-label-tmp let-item="item">
+                  {{ storeLabel(item) }}
+                </ng-template>
+                <ng-template ng-option-tmp let-item="item">
+                  {{ storeLabel(item) }}
+                </ng-template>
+              </ng-select>
+              @if (submitted && f['storeId'].errors?.['required']) {
+                <div class="invalid-feedback d-block">Store is required.</div>
+              }
+            </div>
+
         <div class="field">
           <label for="expenseHeadId" class="form-label">
             Expense Head <span class="required-mark" aria-hidden="true">*</span>
@@ -83,7 +114,7 @@
           }
         </div>
 
-        <div class="field">
+        <div class="field field-span">
           <label for="remarks" class="form-label">Remarks</label>
           <div class="field-control-row">
             <input
@@ -120,6 +151,7 @@
             <thead>
               <tr>
                 <th>Date</th>
+                <th>Store</th>
                 <th>Head</th>
                 <th>Amount</th>
                 <th>Remarks</th>
@@ -130,6 +162,7 @@
               @for (item of cartItems; track item.key) {
                 <tr>
                   <td class="cell-mono">{{ formatDate(item.expenseDate) }}</td>
+                  <td>{{ item.storeName }}</td>
                   <td>{{ item.expenseHeadName }}</td>
                   <td class="cell-mono">{{ item.amount | bdNumber }}</td>
                   <td class="cell-muted">{{ item.remarks || '—' }}</td>
@@ -210,6 +243,26 @@
         autocomplete="off"
         aria-label="To date"
       />
+      <ng-select
+        class="filter-ng-select"
+        formControlName="storeId"
+        placeholder="All stores"
+        [items]="storeOptions"
+        bindLabel="storeName"
+        bindValue="id"
+        [searchFn]="storeSearchFn"
+        [clearable]="true"
+        [searchable]="true"
+        [loading]="loadingStores"
+        aria-label="Store"
+      >
+        <ng-template ng-label-tmp let-item="item">
+          {{ storeLabel(item) }}
+        </ng-template>
+        <ng-template ng-option-tmp let-item="item">
+          {{ storeLabel(item) }}
+        </ng-template>
+      </ng-select>
       <ng-select
         class="filter-ng-select"
         formControlName="expenseHeadId"
@@ -296,6 +349,33 @@
               />
               @if (editSubmitted && ef['expenseDate'].errors?.['required']) {
                 <div class="invalid-feedback">Expense date is required.</div>
+              }
+            </div>
+
+            <div class="field">
+              <label for="editStoreId" class="form-label">
+                Store <span class="required-mark" aria-hidden="true">*</span>
+              </label>
+              <ng-select
+                id="editStoreId"
+                class="form-ng-select"
+                formControlName="storeId"
+                placeholder="Search store..."
+                appendTo="body"
+                [clearable]="true"
+                [searchable]="true"
+                [typeahead]="editStoreTypeahead$"
+                [minTermLength]="0"
+                [loading]="loadingEditStores"
+
+                [class.is-invalid]="editSubmitted && ef['storeId'].invalid"
+              >
+                @for (store of editStoreOptions; track store.id) {
+                  <ng-option [value]="store.id">{{ storeLabel(store) }}</ng-option>
+                }
+              </ng-select>
+              @if (editSubmitted && ef['storeId'].errors?.['required']) {
+                <div class="invalid-feedback d-block">Store is required.</div>
               }
             </div>
 

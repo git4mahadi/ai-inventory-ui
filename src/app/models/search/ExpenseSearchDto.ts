@@ -6,6 +6,7 @@ export class ExpenseSearchDto extends SearchDto {
   @prop() expenseDateTo?: string;
   @prop() id?: string;
   @prop() expenseDate?: string;
+  @prop() storeId?: string;
   @prop() expenseHeadId?: string;
   @prop() expenseHeadName?: string;
   @prop() amount?: number;

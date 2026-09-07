@@ -1,6 +1,8 @@
 export class ExpenseResponse {
   id?: string;
   expenseDate?: string;
+  storeId?: string;
+  storeName?: string;
   expenseHeadId?: string;
   expenseHeadName?: string;
   amount?: number;
