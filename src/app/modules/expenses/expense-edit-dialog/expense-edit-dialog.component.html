@@ -1,0 +1,150 @@
+<div class="modal-header expense-edit-header">
+  <div class="toolbar-title">
+    <h2 id="expense-edit-title" class="modal-title page-title">Update expense</h2>
+    <span class="toolbar-meta">One record</span>
+  </div>
+  <button
+    type="button"
+    class="btn-close"
+    aria-label="Close"
+    (click)="dismiss()"
+    [disabled]="updating"
+  ></button>
+</div>
+
+<form class="edit-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+  <div class="modal-body">
+    @if (loading && !editingReady) {
+      <div class="loading-hint">Loading expense...</div>
+    }
+
+    <div class="edit-grid">
+      <div class="field">
+        <label for="editExpenseDate" class="form-label">
+          Date <span class="required-mark" aria-hidden="true">*</span>
+        </label>
+        <input
+          id="editExpenseDate"
+          type="text"
+          class="form-control form-control-sm"
+          formControlName="expenseDate"
+          bsDatepicker
+          [bsConfig]="datePickerConfig"
+          placeholder="Select date"
+          autocomplete="off"
+          [class.is-invalid]="submitted && f['expenseDate'].invalid"
+        />
+        @if (submitted && f['expenseDate'].errors?.['required']) {
+          <div class="invalid-feedback">Expense date is required.</div>
+        }
+      </div>
+
+      <div class="field">
+        <label for="editStoreId" class="form-label">
+          Store <span class="required-mark" aria-hidden="true">*</span>
+        </label>
+        <ng-select
+          id="editStoreId"
+          class="form-ng-select"
+          formControlName="storeId"
+          placeholder="Select store..."
+          [items]="storeOptions"
+          bindLabel="storeName"
+          bindValue="id"
+          [searchFn]="storeSearchFn"
+          [clearable]="true"
+          [searchable]="true"
+          [loading]="loadingStores"
+          [class.is-invalid]="submitted && f['storeId'].invalid"
+        >
+          <ng-template ng-label-tmp let-item="item">
+            {{ storeLabel(item) }}
+          </ng-template>
+          <ng-template ng-option-tmp let-item="item">
+            {{ storeLabel(item) }}
+          </ng-template>
+        </ng-select>
+        @if (submitted && f['storeId'].errors?.['required']) {
+          <div class="invalid-feedback d-block">Store is required.</div>
+        }
+      </div>
+
+      <div class="field">
+        <label for="editExpenseHeadId" class="form-label">
+          Expense head <span class="required-mark" aria-hidden="true">*</span>
+        </label>
+        <ng-select
+          id="editExpenseHeadId"
+          class="form-ng-select"
+          formControlName="expenseHeadId"
+          placeholder="Select expense head..."
+          [items]="expenseHeadOptions"
+          bindLabel="lookupName"
+          bindValue="id"
+          [clearable]="true"
+          [searchable]="true"
+          [loading]="loadingHeads"
+          [class.is-invalid]="submitted && f['expenseHeadId'].invalid"
+        >
+          <ng-template ng-label-tmp let-item="item">
+            {{ lookupLabel(item) }}
+          </ng-template>
+          <ng-template ng-option-tmp let-item="item">
+            {{ lookupLabel(item) }}
+          </ng-template>
+        </ng-select>
+        @if (submitted && f['expenseHeadId'].errors?.['required']) {
+          <div class="invalid-feedback d-block">Expense head is required.</div>
+        }
+      </div>
+
+      <div class="field">
+        <label for="editAmount" class="form-label">
+          Amount <span class="required-mark" aria-hidden="true">*</span>
+        </label>
+        <input
+          id="editAmount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          class="form-control form-control-sm"
+          formControlName="amount"
+          placeholder="0.00"
+          [class.is-invalid]="submitted && f['amount'].invalid"
+        />
+        @if (submitted && f['amount'].errors?.['required']) {
+          <div class="invalid-feedback">Amount is required.</div>
+        } @else if (submitted && f['amount'].errors?.['min']) {
+          <div class="invalid-feedback">Amount must be greater than zero.</div>
+        }
+      </div>
+
+      <div class="field field-span">
+        <label for="editRemarks" class="form-label">Remarks</label>
+        <input
+          id="editRemarks"
+          type="text"
+          class="form-control form-control-sm"
+          formControlName="remarks"
+          placeholder="Optional remarks"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer expense-edit-footer">
+    <button
+      type="button"
+      class="btn btn-outline-green btn-sm"
+      (click)="dismiss()"
+      [disabled]="updating"
+    >
+      Cancel
+    </button>
+    @if (canUpdate) {
+      <button type="submit" class="btn btn-green btn-sm" [disabled]="updating || loading">
+        {{ updating ? 'Updating...' : 'Update' }}
+      </button>
+    }
+  </div>
+</form>

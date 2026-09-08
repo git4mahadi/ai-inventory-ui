@@ -7,6 +7,7 @@ import { environment } from '../../environments/environment';
 import { ApiResponse } from '../core/models/Response';
 import { unwrapApiData } from '../core/utils/api-response.util';
 import { CurrentExpiredStockReportDto } from '../models/report/CurrentExpiredStockReportDto';
+import { ExpenseReportDto } from '../models/report/ExpenseReportDto';
 import { IncomeStatementReportDto } from '../models/report/IncomeStatementReportDto';
 import { ItemWiseCurrentStockReportDto } from '../models/report/ItemWiseCurrentStockReportDto';
 import { ReportResponse } from '../models/report/ReportResponse';
@@ -81,7 +82,7 @@ export class ReportApiService {
       )
       .pipe(
         unwrapApiData(),
-        map((result) => this.normalizeIncomeStatementReport(result)),
+        map((result) => this.normalizeReportResponse<IncomeStatementReportDto>(result)),
         catchError((err: { error?: { message?: string } }) => {
           this.toast.error(err?.error?.message || 'Failed to load income statement');
           return throwError(() => err);
@@ -89,16 +90,38 @@ export class ReportApiService {
       );
   }
 
-  private normalizeIncomeStatementReport(
-    result: unknown,
-  ): ReportResponse<IncomeStatementReportDto> {
+  printExpense(
+    storeId: string,
+    startDate: string,
+    endDate: string,
+  ): Observable<ReportResponse<ExpenseReportDto>> {
+    const params = new HttpParams()
+      .set('storeId', storeId)
+      .set('startDate', startDate)
+      .set('endDate', endDate);
+    return this.http
+      .get<ApiResponse<ReportResponse<ExpenseReportDto>>>(
+        `${this.baseUrl}/print-expense`,
+        { params },
+      )
+      .pipe(
+        unwrapApiData(),
+        map((result) => this.normalizeReportResponse<ExpenseReportDto>(result)),
+        catchError((err: { error?: { message?: string } }) => {
+          this.toast.error(err?.error?.message || 'Failed to load expense report');
+          return throwError(() => err);
+        }),
+      );
+  }
+
+  private normalizeReportResponse<T>(result: unknown): ReportResponse<T> {
     if (Array.isArray(result)) {
       return { data: result, map: {} };
     }
     if (!result || typeof result !== 'object') {
       return { data: [], map: {} };
     }
-    const value = result as ReportResponse<IncomeStatementReportDto>;
+    const value = result as ReportResponse<T>;
     return {
       store: value.store,
       data: Array.isArray(value.data) ? value.data : [],

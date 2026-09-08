@@ -209,6 +209,27 @@ textarea.form-control-sm {
   background-color: var(--green-600) !important;
 }
 
+.expense-edit-modal .modal-dialog {
+  max-width: 34rem;
+}
+
+.expense-edit-modal .modal-content {
+  border: 1px solid var(--panel-border);
+  border-left: 4px solid #c27d12;
+  border-radius: 0.85rem;
+  box-shadow: 0 18px 48px rgba(18, 53, 40, 0.18);
+}
+
+/* Keep ng-select dropdowns visible/on top inside the expense edit modal */
+.expense-edit-modal .modal-content,
+.expense-edit-modal .modal-body {
+  overflow: visible;
+}
+
+.expense-edit-modal .ng-dropdown-panel {
+  z-index: 2300;
+}
+
 /* ngx-bootstrap datepicker green theme */
 .theme-green .bs-datepicker-head,
 .theme-green .bs-datepicker-head button {

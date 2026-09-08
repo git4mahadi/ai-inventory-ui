@@ -219,6 +219,13 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         link: '/reports/income-statement',
         roles: MenuRoles.incomeStatementReport,
       },
+      {
+        id: 'reports-expenses',
+        label: 'Expenses',
+        shortLabel: 'EX',
+        link: '/reports/expenses',
+        roles: MenuRoles.expenseReport,
+      },
     ],
   },
   {

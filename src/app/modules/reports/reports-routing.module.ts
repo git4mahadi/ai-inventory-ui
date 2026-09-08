@@ -3,6 +3,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { PermissionGuard } from '../../core/guards/permission.guard';
 import { MenuRoles } from '../../core/security/menu-access';
 import { CurrentStockReportComponent } from './current-stock/current-stock-report.component';
+import { ExpenseReportComponent } from './expense/expense-report.component';
 import { ExpiredStockReportComponent } from './expired-stock/expired-stock-report.component';
 import { IncomeStatementReportComponent } from './income-statement/income-statement-report.component';
 
@@ -29,6 +30,12 @@ const routes: Routes = [
     component: IncomeStatementReportComponent,
     canActivate: [PermissionGuard],
     data: { roles: MenuRoles.incomeStatementReport },
+  },
+  {
+    path: 'expenses',
+    component: ExpenseReportComponent,
+    canActivate: [PermissionGuard],
+    data: { roles: MenuRoles.expenseReport },
   },
 ];
 

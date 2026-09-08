@@ -1,19 +1,10 @@
 import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap/modal';
 import { BsDatepickerConfig } from 'ngx-bootstrap/datepicker';
 import { NgSelectComponent } from '@ng-select/ng-select';
-import {
-  Subject,
-  catchError,
-  debounceTime,
-  distinctUntilChanged,
-  finalize,
-  of,
-  switchMap,
-  takeUntil,
-} from 'rxjs';
-import { map } from 'rxjs/operators';
+import { finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import {
   CellClickedEvent,
@@ -27,7 +18,7 @@ import {
 } from 'ag-grid-community';
 import { formatToBdNumberingSystem } from '../../../core/utils/bd-number.util';
 import { normalizeExpense, normalizePage } from '../../../core/utils/api-response.util';
-import { toApiDate, toDatePickerValue, toDisplayDate } from '../../../core/utils/date.util';
+import { toApiDate, toDisplayDate } from '../../../core/utils/date.util';
 import { ExpenseDto } from '../../../models/dto/ExpenseDto';
 import { LookupEnum } from '../../../models/enums/LookupEnum';
 import { ExpenseResponse } from '../../../models/response/ExpenseResponse';
@@ -49,6 +40,7 @@ import {
   hideActionsColumnIfNeeded,
   renderCrudActionButtons,
 } from '../../../shared/utils/crud-access.util';
+import { ExpenseEditDialogComponent } from '../expense-edit-dialog/expense-edit-dialog.component';
 
 interface ExpenseCartItem {
   key: string;
@@ -71,9 +63,7 @@ interface ExpenseCartItem {
 export class ExpenseListComponent implements OnInit, OnDestroy {
   @ViewChild('expenseHeadSelect') expenseHeadSelect?: NgSelectComponent;
   readonly expenseForm: FormGroup;
-  readonly editForm: FormGroup;
   readonly searchForm: FormGroup;
-  readonly editStoreTypeahead$ = new Subject<string>();
   readonly datePickerConfig: Partial<BsDatepickerConfig> = {
     dateInputFormat: 'DD-MMM-YY',
     containerClass: 'theme-green',
@@ -159,24 +149,19 @@ export class ExpenseListComponent implements OnInit, OnDestroy {
   cartItems: ExpenseCartItem[] = [];
   expenseHeadOptions: LookupResponse[] = [];
   storeOptions: StoreResponse[] = [];
-  editStoreOptions: StoreResponse[] = [];
   submitted = false;
-  editSubmitted = false;
   saving = false;
-  updating = false;
   loading = false;
   loadingHeads = false;
   loadingStores = false;
-  loadingEditStores = false;
   hasLoaded = false;
-  editingExpense: ExpenseResponse | null = null;
   deletingId: string | null = null;
   pendingDelete: ExpenseResponse | null = null;
   canCreate = false;
   canUpdate = false;
   canDelete = false;
   private gridApi?: GridApi<ExpenseResponse>;
-  private readonly destroy$ = new Subject<void>();
+  private editModalRef: NgbModalRef | null = null;
 
   page = 0;
   size = 10;
@@ -192,6 +177,7 @@ export class ExpenseListComponent implements OnInit, OnDestroy {
     private readonly router: Router,
     private readonly toastr: ToastrService,
     private readonly authService: AuthService,
+    private readonly modalService: NgbModal,
   ) {
     const access = crudAccess(this.authService, 'ROLE_EXPENSE');
     this.canCreate = access.canCreate;
@@ -199,7 +185,6 @@ export class ExpenseListComponent implements OnInit, OnDestroy {
     this.canDelete = access.canDelete;
     hideActionsColumnIfNeeded(this.columnDefs, access);
     this.expenseForm = this.createExpenseForm();
-    this.editForm = this.createExpenseForm();
     this.searchForm = this.formBuilder.group({
       searchTerm: [''],
       expenseDateFrom: [null as Date | null],
@@ -211,14 +196,6 @@ export class ExpenseListComponent implements OnInit, OnDestroy {
 
   get f() {
     return this.expenseForm.controls;
-  }
-
-  get ef() {
-    return this.editForm.controls;
-  }
-
-  get isEditing(): boolean {
-    return !!this.editingExpense?.id;
   }
 
   get cartTotal(): number {
@@ -240,18 +217,17 @@ export class ExpenseListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.setupEditStoreTypeahead();
     this.loadStores();
     this.loadExpenseHeads();
     const routeId = this.route.snapshot.paramMap.get('id');
     if (routeId) {
-      this.loadExpenseForEdit(routeId);
+      this.openEditDialog(null, routeId);
     }
   }
 
   ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+    this.editModalRef?.dismiss();
+    this.editModalRef = null;
   }
 
   lookupLabel(lookup: LookupResponse): string {
@@ -278,10 +254,6 @@ export class ExpenseListComponent implements OnInit, OnDestroy {
     const haystack = `${item.storeName || ''} ${item.storeCode || ''}`.toLowerCase();
     return haystack.includes(query);
   };
-
-  onEditStoreOpen(): void {
-    this.editStoreTypeahead$.next('');
-  }
 
   formatDate(value?: string): string {
     return toDisplayDate(value) || '—';
@@ -408,51 +380,6 @@ export class ExpenseListComponent implements OnInit, OnDestroy {
     });
   }
 
-  closeEditDialog(): void {
-    if (this.updating) {
-      return;
-    }
-    this.resetEditState();
-  }
-
-  private resetEditState(): void {
-    this.editingExpense = null;
-    this.editSubmitted = false;
-    this.editStoreOptions = [];
-    this.editForm.reset({
-      expenseDate: new Date(),
-      storeId: null,
-      expenseHeadId: null,
-      amount: null,
-      remarks: '',
-      enabled: true,
-    });
-    if (this.route.snapshot.paramMap.get('id')) {
-      void this.router.navigate(['/expenses']);
-    }
-  }
-
-  onUpdate(): void {
-    this.editSubmitted = true;
-    const editingId = this.editingExpense?.id;
-    if (this.editForm.invalid || this.updating || !editingId || !this.canUpdate) {
-      return;
-    }
-
-    const dto = this.toDto(this.editForm.getRawValue());
-    this.updating = true;
-    this.expenseApi
-      .updateExpense(editingId, dto)
-      .pipe(finalize(() => (this.updating = false)))
-      .subscribe({
-        next: () => {
-          this.toastr.success('Expense updated successfully');
-          this.resetEditState();
-          this.reloadGrid();
-        },
-      });
-  }
-
   requestDelete(expense: ExpenseResponse): void {
     if (!expense.id || this.deletingId || !this.canDelete) {
       return;
@@ -487,8 +414,10 @@ export class ExpenseListComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.toastr.success('Expense deleted successfully');
-          if (this.editingExpense?.id === expense.id) {
-            this.resetEditState();
+          const openDialog = this.editModalRef
+            ?.componentInstance as ExpenseEditDialogComponent | undefined;
+          if (openDialog?.expenseId === expense.id) {
+            this.editModalRef?.dismiss();
           }
           this.gridApi?.refreshInfiniteCache();
         },
@@ -503,90 +432,43 @@ export class ExpenseListComponent implements OnInit, OnDestroy {
     if (!normalized?.id) {
       return;
     }
+    this.openEditDialog(normalized, normalized.id);
+  }
 
-    this.patchEditForm(normalized);
-    this.expenseApi.getExpenseById(normalized.id).subscribe({
-      next: (full) => {
-        // Don't overwrite fields the user already changed in the modal.
-        if (this.editingExpense?.id === normalized.id && !this.editForm.dirty) {
-          this.patchEditForm(full);
+  private openEditDialog(
+    expense: ExpenseResponse | null,
+    expenseId: string,
+  ): void {
+    if (!this.canUpdate || this.editModalRef) {
+      return;
+    }
+
+    let dialog!: ExpenseEditDialogComponent;
+    this.editModalRef = this.modalService.open(ExpenseEditDialogComponent, {
+      centered: true,
+      backdrop: 'static',
+      keyboard: true,
+      windowClass: 'expense-edit-modal',
+      beforeDismiss: () => !dialog?.updating,
+    });
+    dialog = this.editModalRef.componentInstance;
+    dialog.canUpdate = this.canUpdate;
+    dialog.expense = expense;
+    dialog.expenseId = expenseId;
+
+    void this.editModalRef.result
+      .then((saved) => {
+        if (saved) {
+          this.reloadGrid();
         }
-      },
-    });
-  }
-
-  private loadExpenseForEdit(id: string): void {
-    if (!this.canUpdate) {
-      this.closeEditDialog();
-      return;
-    }
-    this.expenseApi.getExpenseById(id).subscribe({
-      next: (expense) => this.patchEditForm(expense),
-      error: () => this.closeEditDialog(),
-    });
-  }
-
-  private patchEditForm(expense: ExpenseResponse): void {
-    const normalized = normalizeExpense(expense);
-    if (!normalized?.id) {
-      return;
-    }
-
-    this.editingExpense = normalized;
-    this.editSubmitted = false;
-    this.editForm.patchValue({
-      expenseDate: toDatePickerValue(normalized.expenseDate),
-      storeId: normalized.storeId != null ? String(normalized.storeId) : null,
-      expenseHeadId: normalized.expenseHeadId ?? null,
-      amount: normalized.amount ?? null,
-      remarks: normalized.remarks ?? '',
-      enabled: normalized.enabled ?? true,
-    });
-    this.editForm.markAsPristine();
-
-    this.ensureEditStoreOption(
-      normalized.storeId != null ? String(normalized.storeId) : null,
-      normalized.storeName,
-    );
-
-    if (
-      normalized.expenseHeadId &&
-      !this.expenseHeadOptions.some((lookup) => lookup.id === normalized.expenseHeadId)
-    ) {
-      this.expenseHeadOptions = [
-        {
-          id: normalized.expenseHeadId,
-          lookupName: normalized.expenseHeadName,
-        },
-        ...this.expenseHeadOptions,
-      ];
-    }
-  }
-
-  private ensureEditStoreOption(storeId: string | null, storeName?: string): void {
-    if (!storeId) {
-      return;
-    }
-
-    const id = String(storeId);
-    if (this.editStoreOptions.some((store) => store.id === id)) {
-      return;
-    }
-
-    if (storeName) {
-      this.editStoreOptions = this.mergeOptions(this.editStoreOptions, [{ id, storeName }]);
-      return;
-    }
-
-    this.storeApi.getStoreById(id).subscribe({
-      next: (store) => {
-        if (store?.id) {
-          this.editStoreOptions = this.mergeOptions(this.editStoreOptions, [
-            { ...store, id: String(store.id) },
-          ]);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        this.editModalRef = null;
+        if (this.route.snapshot.paramMap.get('id')) {
+          void this.router.navigate(['/expenses']);
         }
-      },
-    });
+      });
   }
 
   private getExpenseRows(params: IGetRowsParams<ExpenseResponse>): void {
@@ -643,86 +525,6 @@ export class ExpenseListComponent implements OnInit, OnDestroy {
           }));
         },
       });
-  }
-
-  private setupEditStoreTypeahead(): void {
-    this.editStoreTypeahead$
-      .pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
-        switchMap((term) => this.searchEditStores(term)),
-        takeUntil(this.destroy$),
-      )
-      .subscribe((stores) => {
-        this.editStoreOptions = this.mergeOptions(
-          this.selectedEditStoreOptions(),
-          stores ?? [],
-        );
-      });
-  }
-
-  private searchEditStores(term: string) {
-    this.loadingEditStores = true;
-    return this.storeApi
-      .searchTerm(
-        new StoreSearchDto({
-          searchTerm: term?.trim() || undefined,
-          enabled: true,
-        }),
-      )
-      .pipe(
-        map((stores) => {
-          const list = Array.isArray(stores) ? stores : [];
-          return list.map((store) => ({
-            ...store,
-            id: store.id != null ? String(store.id) : store.id,
-          }));
-        }),
-        catchError(() => of([] as StoreResponse[])),
-        finalize(() => (this.loadingEditStores = false)),
-      );
-  }
-
-  private selectedEditStoreOptions(): StoreResponse[] {
-    const selectedId = this.editForm.get('storeId')?.value as string | null;
-    if (!selectedId) {
-      return [];
-    }
-
-    const fromOptions = this.editStoreOptions.find(
-      (store) => store.id === selectedId && !!store.storeName,
-    );
-    if (fromOptions) {
-      return [fromOptions];
-    }
-
-    const fromStoreList = this.storeOptions.find((store) => store.id === selectedId);
-    if (fromStoreList) {
-      return [{ ...fromStoreList, id: String(fromStoreList.id) }];
-    }
-
-    const isOriginalStore =
-      this.editingExpense?.storeId != null &&
-      String(this.editingExpense.storeId) === selectedId;
-
-    return [
-      {
-        id: selectedId,
-        storeName: isOriginalStore
-          ? this.editingExpense?.storeName || selectedId
-          : selectedId,
-      },
-    ];
-  }
-
-  private mergeOptions<T extends { id?: string }>(kept: T[], incoming: T[]): T[] {
-    const byId = new Map<string, T>();
-    for (const option of [...kept, ...incoming]) {
-      if (option.id) {
-        byId.set(option.id, option);
-      }
-    }
-    return [...byId.values()];
   }
 
   private loadExpenseHeads(): void {

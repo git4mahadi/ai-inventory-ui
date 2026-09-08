@@ -91,6 +91,7 @@ export const MenuRoles = {
   currentStockReport: ['ROLE_CURRENT_STOCK_REPORT'],
   expiredStockReport: ['ROLE_CURRENT_EXPIRED_STOCK_REPORT'],
   incomeStatementReport: ['ROLE_INCOME_STATEMENT_REPORT'],
+  expenseReport: ['ROLE_EXPENSE_REPORT'],
 
   customer: roles('ROLE_CUSTOMER', CRUD),
   supplier: roles('ROLE_SUPPLIER', CRUD),
@@ -114,4 +115,5 @@ export const REPORTS_MODULE_ROLES: string[] = [
   ...MenuRoles.currentStockReport,
   ...MenuRoles.expiredStockReport,
   ...MenuRoles.incomeStatementReport,
+  ...MenuRoles.expenseReport,
 ];
