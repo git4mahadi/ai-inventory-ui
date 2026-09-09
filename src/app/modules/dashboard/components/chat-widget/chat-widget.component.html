@@ -1,0 +1,115 @@
+<div class="chat-widget">
+  @if (open) {
+    <section class="chat-panel" aria-label="Inventory chat">
+      <header class="chat-panel__header">
+        <div class="chat-panel__title-wrap">
+          <span class="chat-panel__mark" aria-hidden="true">AI</span>
+          <div>
+            <h2 class="chat-panel__title">Inventory assistant</h2>
+            <p class="chat-panel__subtitle">Ask about sales, stock, or expenses</p>
+          </div>
+        </div>
+        <div class="chat-panel__actions">
+          <button
+            type="button"
+            class="chat-icon-btn"
+            title="New chat"
+            aria-label="Start a new chat"
+            (click)="startNewChat()"
+            [disabled]="sending"
+          >
+            <span class="chat-icon-btn__plus" aria-hidden="true"></span>
+          </button>
+          <button
+            type="button"
+            class="chat-icon-btn"
+            title="Close chat"
+            aria-label="Close chat"
+            (click)="toggleOpen()"
+          >
+            <span class="chat-icon-btn__close" aria-hidden="true"></span>
+          </button>
+        </div>
+      </header>
+
+      <div
+        #thread
+        class="chat-thread"
+        (scroll)="onThreadScroll()"
+      >
+        @if (loadingHistory) {
+          <div class="chat-state">
+            <span class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></span>
+            <span>Loading conversation…</span>
+          </div>
+        } @else if (historyError) {
+          <div class="chat-state">Could not load previous messages.</div>
+        } @else if (messages.length === 0 && !sending) {
+          <div class="chat-empty">
+            <p>Hi, I can help with sales, stock, and expenses.</p>
+            <p>Ask a question to start this conversation.</p>
+          </div>
+        }
+
+        @if (loadingMore) {
+          <div class="chat-state chat-state--more">
+            <span class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></span>
+            <span>Loading earlier messages…</span>
+          </div>
+        }
+
+        @for (message of messages; track message.id) {
+          <article class="chat-bubble chat-bubble--{{ message.role }}">
+            <p class="chat-bubble__text">{{ message.content }}</p>
+          </article>
+        }
+
+        @if (sending) {
+          <article class="chat-bubble chat-bubble--assistant chat-bubble--pending">
+            <span class="chat-typing" aria-label="Assistant is typing">
+              <span></span><span></span><span></span>
+            </span>
+          </article>
+        }
+      </div>
+
+      <form class="chat-composer" (ngSubmit)="send()">
+        <label class="visually-hidden" for="chatDraft">Message</label>
+        <textarea
+          #composer
+          id="chatDraft"
+          class="chat-composer__input"
+          name="draft"
+          rows="1"
+          [(ngModel)]="draft"
+          [disabled]="sending"
+          placeholder="Type a message"
+          (keydown)="onComposerKeydown($event)"
+        ></textarea>
+        <button
+          type="submit"
+          class="chat-send"
+          [disabled]="sending || !draft.trim()"
+          aria-label="Send message"
+        >
+          Send
+        </button>
+      </form>
+    </section>
+  }
+
+  <button
+    type="button"
+    class="chat-fab"
+    [class.chat-fab--open]="open"
+    (click)="toggleOpen()"
+    [attr.aria-label]="open ? 'Close chat' : 'Open inventory assistant'"
+    [attr.title]="open ? 'Close chat' : 'Open inventory assistant'"
+  >
+    @if (open) {
+      <span class="chat-fab__close" aria-hidden="true"></span>
+    } @else {
+      <span class="chat-fab__icon" aria-hidden="true"></span>
+    }
+  </button>
+</div>
