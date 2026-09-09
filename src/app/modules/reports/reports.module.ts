@@ -4,6 +4,7 @@ import { CurrentStockReportComponent } from './current-stock/current-stock-repor
 import { ExpenseReportComponent } from './expense/expense-report.component';
 import { ExpiredStockReportComponent } from './expired-stock/expired-stock-report.component';
 import { IncomeStatementReportComponent } from './income-statement/income-statement-report.component';
+import { ItemWiseProfitReportComponent } from './item-wise-profit/item-wise-profit-report.component';
 import { ReportsRoutingModule } from './reports-routing.module';
 
 @NgModule({
@@ -12,6 +13,7 @@ import { ReportsRoutingModule } from './reports-routing.module';
     ExpiredStockReportComponent,
     IncomeStatementReportComponent,
     ExpenseReportComponent,
+    ItemWiseProfitReportComponent,
   ],
   imports: [SharedModule, ReportsRoutingModule],
 })

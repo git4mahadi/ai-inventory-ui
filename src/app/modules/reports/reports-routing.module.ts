@@ -6,6 +6,7 @@ import { CurrentStockReportComponent } from './current-stock/current-stock-repor
 import { ExpenseReportComponent } from './expense/expense-report.component';
 import { ExpiredStockReportComponent } from './expired-stock/expired-stock-report.component';
 import { IncomeStatementReportComponent } from './income-statement/income-statement-report.component';
+import { ItemWiseProfitReportComponent } from './item-wise-profit/item-wise-profit-report.component';
 
 const routes: Routes = [
   {
@@ -36,6 +37,12 @@ const routes: Routes = [
     component: ExpenseReportComponent,
     canActivate: [PermissionGuard],
     data: { roles: MenuRoles.expenseReport },
+  },
+  {
+    path: 'item-wise-profit',
+    component: ItemWiseProfitReportComponent,
+    canActivate: [PermissionGuard],
+    data: { roles: MenuRoles.itemWiseProfitReport },
   },
 ];
 

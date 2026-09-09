@@ -103,6 +103,7 @@ export const PERMISSION_TREE: PermissionNode[] = [
     leaf('ROLE_CURRENT_EXPIRED_STOCK_REPORT', 'Expired stock'),
     leaf('ROLE_INCOME_STATEMENT_REPORT', 'Income statement'),
     leaf('ROLE_EXPENSE_REPORT', 'Expenses'),
+    leaf('ROLE_ITEM_WISE_PROFIT_REPORT', 'Item wise profit'),
   ]),
   node('return', 'Return', 'RT', [
     leaf('ROLE_RETURN_CREATE', 'Create'),

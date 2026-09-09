@@ -226,6 +226,13 @@ export const SIDEBAR_MENU: SidebarMenuNode[] = [
         link: '/reports/expenses',
         roles: MenuRoles.expenseReport,
       },
+      {
+        id: 'reports-item-wise-profit',
+        label: 'Item Wise Profit',
+        shortLabel: 'IP',
+        link: '/reports/item-wise-profit',
+        roles: MenuRoles.itemWiseProfitReport,
+      },
     ],
   },
   {
