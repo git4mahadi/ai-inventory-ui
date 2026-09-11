@@ -93,6 +93,7 @@ export const MenuRoles = {
   incomeStatementReport: ['ROLE_INCOME_STATEMENT_REPORT'],
   expenseReport: ['ROLE_EXPENSE_REPORT'],
   itemWiseProfitReport: ['ROLE_ITEM_WISE_PROFIT_REPORT'],
+  invoiceWiseProfitReport: ['ROLE_ITEM_WISE_PROFIT_REPORT'],
 
   customer: roles('ROLE_CUSTOMER', CRUD),
   supplier: roles('ROLE_SUPPLIER', CRUD),
@@ -118,4 +119,5 @@ export const REPORTS_MODULE_ROLES: string[] = [
   ...MenuRoles.incomeStatementReport,
   ...MenuRoles.expenseReport,
   ...MenuRoles.itemWiseProfitReport,
+  ...MenuRoles.invoiceWiseProfitReport,
 ];

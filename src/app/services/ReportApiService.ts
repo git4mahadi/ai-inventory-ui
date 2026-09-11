@@ -10,6 +10,7 @@ import { CurrentExpiredStockReportDto } from '../models/report/CurrentExpiredSto
 import { ExpenseReportDto } from '../models/report/ExpenseReportDto';
 import { IncomeStatementReportDto } from '../models/report/IncomeStatementReportDto';
 import { ItemWiseCurrentStockReportDto } from '../models/report/ItemWiseCurrentStockReportDto';
+import { InvoiceWiseProfitReportDto } from '../models/report/InvoiceWiseProfitReportDto';
 import { ItemWiseProfitReportDto } from '../models/report/ItemWiseProfitReportDto';
 import { ReportResponse } from '../models/report/ReportResponse';
 
@@ -134,6 +135,30 @@ export class ReportApiService {
         map((result) => this.normalizeReportResponse<ItemWiseProfitReportDto>(result)),
         catchError((err: { error?: { message?: string } }) => {
           this.toast.error(err?.error?.message || 'Failed to load item wise profit report');
+          return throwError(() => err);
+        }),
+      );
+  }
+
+  printInvoiceWiseProfit(
+    storeId: string,
+    startDate: string,
+    endDate: string,
+  ): Observable<ReportResponse<InvoiceWiseProfitReportDto>> {
+    const params = new HttpParams()
+      .set('storeId', storeId)
+      .set('startDate', startDate)
+      .set('endDate', endDate);
+    return this.http
+      .get<ApiResponse<ReportResponse<InvoiceWiseProfitReportDto>>>(
+        `${this.baseUrl}/print-invoice-wise-profit`,
+        { params },
+      )
+      .pipe(
+        unwrapApiData(),
+        map((result) => this.normalizeReportResponse<InvoiceWiseProfitReportDto>(result)),
+        catchError((err: { error?: { message?: string } }) => {
+          this.toast.error(err?.error?.message || 'Failed to load invoice wise profit report');
           return throwError(() => err);
         }),
       );
